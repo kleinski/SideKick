@@ -146,8 +146,8 @@ struct SettingsView: View {
                             }
                     }
                     .buttonStyle(.plain)
-                    .help("About Side Screen")
-                    .accessibilityLabel("About Side Screen")
+                    .help("About SideKick")
+                    .accessibilityLabel("About SideKick")
                     .popover(isPresented: $showAbout, arrowEdge: .bottom) {
                         AboutPopover(updater: updater)
                     }
@@ -167,7 +167,7 @@ struct SettingsView: View {
                         Button("Cancel", role: .cancel) { }
                         Button("Reset", role: .destructive) {
                             settings.resetToDefaults()
-                            if let window = NSApp.windows.first(where: { $0.title == "Side Screen" }) {
+                            if let window = NSApp.windows.first(where: { $0.title == "SideKick" }) {
                                 window.center()
                             }
                         }
@@ -1047,7 +1047,7 @@ struct SettingsView: View {
                                 }
                         }
                         .buttonStyle(.plain)
-                        .help("Quit Side Screen (⌘Q)")
+                        .help("Quit SideKick (⌘Q)")
                     }
                     .padding(.horizontal, 20)
                     .padding(.vertical, 14)
@@ -1094,7 +1094,7 @@ struct AboutPopover: View {
                     .resizable()
                     .frame(width: 44, height: 44)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Side Screen")
+                    Text("SideKick")
                         .font(.system(size: 15, weight: .semibold))
                     Text("Version \(AppInfo.version)")
                         .font(.system(size: 12))
@@ -1577,7 +1577,7 @@ class SettingsWindowController: NSWindowController, NSWindowDelegate {
             defer: false
         )
 
-        window.title = "Side Screen"
+        window.title = "SideKick"
         window.titlebarAppearsTransparent = true
         window.backgroundColor = .windowBackgroundColor
         window.isMovableByWindowBackground = true
