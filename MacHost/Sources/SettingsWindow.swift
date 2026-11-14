@@ -843,16 +843,30 @@ struct SettingsView: View {
                                             : "Required to capture the virtual display.")
                                             .font(.system(size: 11))
                                             .foregroundColor(.secondary)
-                                        Button(action: {
-                                            NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!)
-                                        }) {
-                                            HStack {
-                                                Image(systemName: "gear")
-                                                Text("Open System Settings")
+                                        HStack(spacing: 8) {
+                                            Button(action: {
+                                                NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!)
+                                            }) {
+                                                HStack {
+                                                    Image(systemName: "gear")
+                                                    Text("Open System Settings")
+                                                }
                                             }
+                                            .buttonStyle(.borderedProminent)
+                                            .controlSize(.small)
+
+                                            Button(action: {
+                                                (NSApp.delegate as? AppDelegate)?.resetPermissionsAndReprompt()
+                                            }) {
+                                                HStack {
+                                                    Image(systemName: "arrow.triangle.2.circlepath")
+                                                    Text("Reset & Re-request")
+                                                }
+                                            }
+                                            .buttonStyle(.bordered)
+                                            .controlSize(.small)
+                                            .help("Automatically clears stale permission entries via tccutil and triggers a fresh macOS prompt.")
                                         }
-                                        .buttonStyle(.borderedProminent)
-                                        .controlSize(.small)
                                     }
                                     .padding(10)
                                     .background(Color.orange.opacity(0.1))
@@ -898,17 +912,30 @@ struct SettingsView: View {
                                         Text("Control your Mac from your tablet.")
                                             .font(.system(size: 11))
                                             .foregroundColor(.secondary)
-                                        Button(action: {
-                                            NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
-                                        }) {
-                                            HStack {
-                                                Image(systemName: "gear")
-                                                Text("Open Settings")
+                                        HStack(spacing: 8) {
+                                            Button(action: {
+                                                NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
+                                            }) {
+                                                HStack {
+                                                    Image(systemName: "gear")
+                                                    Text("Open Settings")
+                                                }
+                                                .frame(maxWidth: .infinity)
                                             }
-                                            .frame(maxWidth: .infinity)
+                                            .buttonStyle(.borderedProminent)
+                                            .controlSize(.small)
+
+                                            Button(action: {
+                                                (NSApp.delegate as? AppDelegate)?.resetPermissionsAndReprompt()
+                                            }) {
+                                                HStack {
+                                                    Image(systemName: "arrow.triangle.2.circlepath")
+                                                    Text("Reset & Prompt")
+                                                }
+                                            }
+                                            .buttonStyle(.bordered)
+                                            .controlSize(.small)
                                         }
-                                        .buttonStyle(.borderedProminent)
-                                        .controlSize(.small)
                                     }
                                     .padding(10)
                                     .background(Color.blue.opacity(0.08))

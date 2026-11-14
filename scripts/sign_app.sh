@@ -13,9 +13,13 @@ ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 ENTITLEMENTS="$ROOT_DIR/MacHost/SideScreen.entitlements"
 
 FLAGS=(--force --options runtime)
-if [ "$IDENTITY" != "-" ]; then
+if [[ "$IDENTITY" == "Developer ID"* ]]; then
   FLAGS+=(--timestamp)
+else
+  FLAGS+=(--timestamp=none)
 fi
+
+BUNDLE_ID=$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$APP/Contents/Info.plist" 2>/dev/null || echo "com.sidekick.app")
 
 SPARKLE="$APP/Contents/Frameworks/Sparkle.framework"
 if [ -d "$SPARKLE" ]; then
@@ -26,5 +30,9 @@ if [ -d "$SPARKLE" ]; then
   codesign "${FLAGS[@]}" --sign "$IDENTITY" "$SPARKLE"
 fi
 
-codesign "${FLAGS[@]}" --sign "$IDENTITY" --entitlements "$ENTITLEMENTS" "$APP"
+if [ "$IDENTITY" = "-" ]; then
+  codesign "${FLAGS[@]}" --sign "$IDENTITY" -r="designated => identifier \"$BUNDLE_ID\"" --entitlements "$ENTITLEMENTS" "$APP"
+else
+  codesign "${FLAGS[@]}" --sign "$IDENTITY" --entitlements "$ENTITLEMENTS" "$APP"
+fi
 codesign --verify --strict --verbose=2 "$APP"

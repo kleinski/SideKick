@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3 
 """
 Registers SideKick quick actions (Takeover, Start/Stop, Settings) into
 Vorssaint's Command Bar Links (defaults domain `com.vorssaint.utils`, key `commandBarLinks`).

@@ -522,6 +522,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func checkPermissions() async {
         let version = ProcessInfo.processInfo.operatingSystemVersion
         debugLog("checkPermissions — macOS \(version.majorVersion).\(version.minorVersion).\(version.patchVersion)")
+        let fingerprint = Self.currentExecutableBuildFingerprint()
 
         // Check Screen Recording permission using CoreGraphics API
         let hasScreenCapture = CGPreflightScreenCaptureAccess()
@@ -530,6 +531,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         if hasScreenCapture {
             debugLog("Screen recording permission granted (CGPreflight)")
+            UserDefaults.standard.set(fingerprint, forKey: "lastTCCScreenCaptureFingerprint")
 
             // On macOS 26+, also verify ScreenCaptureKit is actually functional
             if version.majorVersion >= 26 {
@@ -543,6 +545,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         } else {
             debugLog("Screen recording permission not granted yet")
+            // Automatically clear any stale TCC entry from an older build so the user
+            // never has to manually delete the old row in System Settings.
+            if UserDefaults.standard.string(forKey: "lastTCCScreenCaptureFingerprint") != fingerprint {
+                UserDefaults.standard.set(fingerprint, forKey: "lastTCCScreenCaptureFingerprint")
+                Self.runTCCReset(service: "ScreenCapture")
+            }
             CGRequestScreenCaptureAccess()
         }
 
@@ -552,13 +560,49 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func checkAccessibilityPermission() async {
         let trusted = AXIsProcessTrusted()
+        let fingerprint = Self.currentExecutableBuildFingerprint()
         await MainActor.run {
             settings.hasAccessibilityPermission = trusted
         }
         if trusted {
             print("✅ Accessibility permission granted")
+            UserDefaults.standard.set(fingerprint, forKey: "lastTCCAccessibilityFingerprint")
         } else {
             print("⚠️  Accessibility permission not granted - touch control will not work")
+            if UserDefaults.standard.string(forKey: "lastTCCAccessibilityFingerprint") != fingerprint {
+                UserDefaults.standard.set(fingerprint, forKey: "lastTCCAccessibilityFingerprint")
+                Self.runTCCReset(service: "Accessibility")
+            }
+        }
+    }
+
+    private static func currentExecutableBuildFingerprint() -> String {
+        guard let execPath = Bundle.main.executablePath,
+              let attrs = try? FileManager.default.attributesOfItem(atPath: execPath) else {
+            return AppInfo.version
+        }
+        let mtime = (attrs[.modificationDate] as? Date)?.timeIntervalSince1970 ?? 0
+        let size = (attrs[.size] as? NSNumber)?.int64Value ?? 0
+        return "\(AppInfo.version)-\(Int64(mtime))-\(size)"
+    }
+
+    private static func runTCCReset(service: String) {
+        let bundleId = Bundle.main.bundleIdentifier ?? "com.sidekick.app"
+        debugLog("🧹 Running tccutil reset \(service) \(bundleId) to remove stale permission entries")
+        let proc = Process()
+        proc.executableURL = URL(fileURLWithPath: "/usr/bin/tccutil")
+        proc.arguments = ["reset", service, bundleId]
+        try? proc.run()
+        proc.waitUntilExit()
+    }
+
+    @objc func resetPermissionsAndReprompt() {
+        Self.runTCCReset(service: "ScreenCapture")
+        Self.runTCCReset(service: "Accessibility")
+        _ = CGRequestScreenCaptureAccess()
+        Task { @MainActor in
+            self.promptAccessibilityPermission()
+            await self.checkPermissions()
         }
     }
 
@@ -1547,6 +1591,10 @@ extension AppDelegate: NSMenuDelegate {
         let settingsItem = NSMenuItem(title: "Settings…", action: #selector(showSettings), keyEquivalent: "s")
         settingsItem.target = self
         menu.addItem(settingsItem)
+
+        let resetPermsItem = NSMenuItem(title: "Reset macOS Permissions (TCC)", action: #selector(resetPermissionsAndReprompt), keyEquivalent: "")
+        resetPermsItem.target = self
+        menu.addItem(resetPermsItem)
 
         if FileManager.default.fileExists(atPath: "/Applications/Vorssaint.app") {
             let vorssaintItem = NSMenuItem(title: "Register Actions in Vorssaint", action: #selector(registerInVorssaint), keyEquivalent: "")

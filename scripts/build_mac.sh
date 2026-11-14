@@ -129,7 +129,14 @@ cat > "$APP_DIR/Contents/Info.plist" << EOF
 EOF
 
 # Developer ID signing when SIDESCREEN_SIGN_IDENTITY is set (same flags as CI),
-# otherwise ad-hoc — Gatekeeper then needs `xattr -cr` after install.
+# or automatic local certificate signing ("SideKick Local Signing") when available in Keychain,
+# otherwise ad-hoc with explicit identifier designated requirement.
+if [ -z "${SIDESCREEN_SIGN_IDENTITY:-}" ]; then
+    if security find-identity -v -p codesigning 2>/dev/null | grep -q "SideKick Local Signing"; then
+        SIDESCREEN_SIGN_IDENTITY="SideKick Local Signing"
+    fi
+fi
+
 if [ -n "${SIDESCREEN_SIGN_IDENTITY:-}" ]; then
     echo "Signing as $SIDESCREEN_SIGN_IDENTITY..."
     "$ROOT_DIR/scripts/sign_app.sh" "$APP_DIR" "$SIDESCREEN_SIGN_IDENTITY"
@@ -137,7 +144,7 @@ if [ -n "${SIDESCREEN_SIGN_IDENTITY:-}" ]; then
         "$ROOT_DIR/scripts/notarize.sh" "$APP_DIR"
     fi
 else
-    echo "Ad-hoc signing (set SIDESCREEN_SIGN_IDENTITY for Developer ID)..."
+    echo "Ad-hoc signing with explicit identifier requirement (run ./scripts/setup_signing_cert.sh for persistent local cert)..."
     "$ROOT_DIR/scripts/sign_app.sh" "$APP_DIR" -
 fi
 echo "  ✓ App signed"
