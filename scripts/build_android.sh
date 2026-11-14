@@ -7,13 +7,22 @@ ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 echo "🔨 Building Android Client..."
 cd "$ROOT_DIR/AndroidClient"
 
-# Set JAVA_HOME for Android Studio's bundled JDK
-export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
+# Prefer local .toolchain JDK & Android SDK if present, otherwise Android Studio's bundled JDK
+if [ -d "$ROOT_DIR/.toolchain/jdk/Contents/Home" ]; then
+    export JAVA_HOME="$ROOT_DIR/.toolchain/jdk/Contents/Home"
+elif [ -d "/Applications/Android Studio.app/Contents/jbr/Contents/Home" ]; then
+    export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
+fi
+
+if [ -d "$ROOT_DIR/.toolchain/android-sdk" ]; then
+    export ANDROID_HOME="$ROOT_DIR/.toolchain/android-sdk"
+    export PATH="$ANDROID_HOME/platform-tools:$PATH"
+fi
 
 # Check if Java is available
-if [ ! -d "$JAVA_HOME" ]; then
-    echo "❌ Java not found at: $JAVA_HOME"
-    echo "   Please install Android Studio or set JAVA_HOME manually"
+if [ -z "${JAVA_HOME:-}" ] || [ ! -d "$JAVA_HOME" ]; then
+    echo "❌ Java not found."
+    echo "   Please install Android Studio or place a JDK in .toolchain/jdk"
     exit 1
 fi
 

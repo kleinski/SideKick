@@ -640,7 +640,7 @@
                         app:strokeColor="#7f1d1d" />
                 </LinearLayout>
 
-                <!-- State: Paired idle (after explicit Disconnect) -->
+                <!-- State: Paired idle (multi-Mac list + scan status) -->
                 <LinearLayout
                     android:id="@+id/wirelessPairedIdle"
                     android:layout_width="match_parent"
@@ -651,55 +651,92 @@
                     android:layout_marginBottom="20dp"
                     android:visibility="gone">
 
-                    <TextView
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="○ Disconnected"
-                        android:textColor="#888888"
-                        android:textSize="14sp"
-                        android:textStyle="bold"
-                        android:gravity="center"
-                        android:layout_marginBottom="8dp" />
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="10dp">
 
+                        <TextView
+                            android:id="@+id/pairedMacsHeader"
+                            android:layout_width="0dp"
+                            android:layout_weight="1"
+                            android:layout_height="wrap_content"
+                            android:text="Paired Macs"
+                            android:textColor="#FFFFFF"
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/wirelessRefreshScanButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="↻ Scan WiFi"
+                            android:textColor="#8ab4ff"
+                            android:textSize="13sp"
+                            android:padding="6dp"
+                            android:background="?attr/selectableItemBackground" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/wirelessScanStatusText"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Checking reachable Macs on Wi‑Fi…"
+                        android:textColor="#999999"
+                        android:textSize="12sp"
+                        android:layout_marginBottom="12dp" />
+
+                    <!-- Dynamic list of paired Macs populated by WirelessTabController -->
+                    <LinearLayout
+                        android:id="@+id/pairedMacsListContainer"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:layout_marginBottom="12dp" />
+
+                    <!-- Hidden legacy single-Mac views kept for view-binding compatibility -->
                     <TextView
                         android:id="@+id/idleMacName"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="Mac"
-                        android:textColor="#FFFFFF"
-                        android:textSize="16sp"
-                        android:textStyle="bold"
-                        android:gravity="center" />
-
+                        android:layout_width="0dp"
+                        android:layout_height="0dp"
+                        android:visibility="gone" />
                     <TextView
                         android:id="@+id/idleMacIp"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="—"
-                        android:textColor="#888888"
-                        android:textSize="12sp"
-                        android:gravity="center"
-                        android:layout_marginBottom="16dp" />
-
+                        android:layout_width="0dp"
+                        android:layout_height="0dp"
+                        android:visibility="gone" />
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/wirelessReconnectButton"
-                        android:layout_width="match_parent"
-                        android:layout_height="56dp"
-                        android:text="Reconnect"
-                        android:textSize="16sp"
-                        app:cornerRadius="16dp"
-                        app:backgroundTint="#4CAF50"
-                        android:textColor="#FFFFFF"
-                        android:layout_marginBottom="8dp" />
-
+                        android:layout_width="0dp"
+                        android:layout_height="0dp"
+                        android:visibility="gone" />
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/wirelessIdleForgetButton"
+                        android:layout_width="0dp"
+                        android:layout_height="0dp"
+                        android:visibility="gone" />
+
+                    <!-- Pair another MacBook -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/wirelessAddMacScanButton"
                         style="?attr/materialButtonOutlinedStyle"
                         android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:text="+ Pair another Mac (Scan QR)"
+                        android:textColor="#4ade80"
+                        app:strokeColor="#4ade80"
+                        app:cornerRadius="14dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/wirelessAddMacCodeButton"
+                        style="?attr/borderlessButtonStyle"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Forget this Mac"
-                        android:textColor="#fca5a5"
-                        app:strokeColor="#7f1d1d" />
+                        android:text="Pair another Mac with code"
+                        android:textColor="#8ab4ff"
+                        android:textSize="12sp" />
                 </LinearLayout>
 
                 <!-- State 4: Token mismatch / re-pair -->

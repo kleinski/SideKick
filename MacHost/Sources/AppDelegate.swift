@@ -89,6 +89,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Setup settings observers
         setupSettingsObservers()
 
+        // Listen for CLI / external launcher commands (e.g. from Vorssaint)
+        DistributedNotificationCenter.default().addObserver(
+            self,
+            selector: #selector(handleExternalCommandNotification(_:)),
+            name: NSNotification.Name("com.sidescreen.app.command"),
+            object: nil
+        )
+
         // Check permissions
         Task {
             await checkPermissions()
@@ -138,6 +146,41 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             showSettings()
         }
         return true
+    }
+
+    func application(_ application: NSApplication, open urls: [URL]) {
+        for url in urls where url.scheme?.lowercased() == "sidescreen" {
+            let cmd = (url.host ?? url.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))).lowercased()
+            handleExternalAction(cmd)
+        }
+    }
+
+    @objc private func handleExternalCommandNotification(_ notification: Notification) {
+        if let cmd = notification.object as? String {
+            handleExternalAction(cmd.lowercased())
+        }
+    }
+
+    private func handleExternalAction(_ action: String) {
+        debugLog("⚡ External action received: \(action)")
+        switch action {
+        case "takeover":
+            requestTabletTakeover()
+        case "toggle":
+            toggleServerFromMenu()
+        case "start":
+            if !settings.isRunning {
+                Task { @MainActor in await startServer() }
+            }
+        case "stop":
+            if settings.isRunning {
+                stopServer()
+            }
+        case "settings":
+            showSettings()
+        default:
+            debugLog("Unknown external action: \(action)")
+        }
     }
 
     @MainActor
@@ -359,7 +402,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             .store(in: &cancellables)
     }
 
-    @objc private func toggleServerFromMenu() {
+    @objc func toggleServerFromMenu() {
         if settings.isRunning {
             stopServer()
         } else {
@@ -369,14 +412,37 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    @objc private func selectUSBMode() {
+    @objc func selectUSBMode() {
         guard settings.connectionMode != .usb else { return }
         settings.connectionMode = .usb
     }
 
-    @objc private func selectWirelessMode() {
+    @objc func selectWirelessMode() {
         guard settings.connectionMode != .wireless else { return }
         settings.connectionMode = .wireless
+    }
+
+    @objc func requestTabletTakeover() {
+        Task { @MainActor in
+            if settings.connectionMode != .wireless {
+                settings.connectionMode = .wireless
+            }
+            if !settings.isRunning {
+                await startServer()
+            }
+            guard settings.isRunning else { return }
+            let token = WirelessAuth.loadOrCreate()
+            let hostId = WirelessAuth.loadOrCreateHostId()
+            let macName = Host.current().localizedName ?? "Mac"
+            let knownIPs = pairedDeviceStore.all().compactMap { $0.lastAddress }
+            HandoverBroadcaster.broadcastTakeover(
+                token: token,
+                port: settings.port,
+                hostId: hostId,
+                macName: macName,
+                knownClientAddresses: knownIPs
+            )
+        }
     }
 
     func setupSettingsWindow() {
@@ -391,6 +457,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     await self?.startServer()
                 }
             }
+        }
+        settings.onRequestTakeover = { [weak self] in
+            self?.requestTabletTakeover()
         }
     }
 
@@ -598,13 +667,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             streamingServer?.touchEnabled = settings.touchEnabled
             if settings.connectionMode == .wireless {
                 streamingServer?.expectedAuthToken = WirelessAuth.loadOrCreate()
+                streamingServer?.bonjourHostId = WirelessAuth.loadOrCreateHostId()
                 configurePairingCode(on: streamingServer)
-                streamingServer?.onWirelessClientPaired = { [weak self] deviceName in
+                streamingServer?.onWirelessClientPaired = { [weak self] deviceName, clientAddress in
                     guard let self = self else { return }
                     Task { @MainActor in
                         self.currentWirelessDevice = deviceName
                         self.settings.currentWirelessDevice = deviceName
-                        self.pairedDeviceStore.upsert(name: deviceName, lastConnected: Date())
+                        self.pairedDeviceStore.upsert(name: deviceName, lastConnected: Date(), lastAddress: clientAddress)
                     }
                 }
             }
@@ -865,11 +935,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         guard let server = server else { return }
         rotatePairingCode(on: server)
         server.pairingMacName = Host.current().localizedName ?? "Mac"
-        server.onPairingSuccess = { [weak self, weak server] deviceName in
+        server.onPairingSuccess = { [weak self, weak server] deviceName, clientAddress in
             guard let self = self else { return }
             self.rotatePairingCode(on: server)
             Task { @MainActor in
-                self.pairedDeviceStore.upsert(name: deviceName, lastConnected: Date())
+                self.pairedDeviceStore.upsert(name: deviceName, lastConnected: Date(), lastAddress: clientAddress)
             }
         }
         server.onPairingCodeExhausted = { [weak self, weak server] in
@@ -1351,6 +1421,19 @@ extension AppDelegate: NSMenuDelegate {
         statusLine.isEnabled = false
         menu.addItem(statusLine)
         menu.addItem(.separator())
+
+        // Connect Tablet Here (Takeover) — switches a paired tablet from another Mac to this Mac.
+        // Placed at the very top of actions and always enabled so it can be triggered any time.
+        let takeover = NSMenuItem(
+            title: "Connect Tablet Here (Takeover)",
+            action: #selector(requestTabletTakeover),
+            keyEquivalent: "T"
+        )
+        takeover.keyEquivalentModifierMask = [.command, .shift]
+        takeover.target = self
+        takeover.image = NSImage(systemSymbolName: "ipad.and.arrow.forward", accessibilityDescription: "Takeover")
+        takeover.isEnabled = true
+        menu.addItem(takeover)
 
         // Start / Stop
         let toggle = NSMenuItem(

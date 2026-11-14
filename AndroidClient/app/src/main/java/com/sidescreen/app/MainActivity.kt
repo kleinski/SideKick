@@ -53,7 +53,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var appUpdater: AppUpdater
     private lateinit var reviewPrompter: ReviewPrompter
     private val pairedHostStorage by lazy { PairedHostStorage(this) }
+    private val lanHostDiscovery by lazy { LanHostDiscovery(this) }
     private val cameraPerm by lazy { CameraPermissionManager(this) }
+    private var handoverListener: HandoverListener? = null
     private lateinit var binding: ActivityMainBinding
     private lateinit var prefs: PreferencesManager
     private var videoDecoder: VideoDecoder? = null
@@ -172,9 +174,19 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupWirelessController() {
+        lanHostDiscovery.start()
+        handoverListener =
+            HandoverListener(pairedHostStorage) { targetMac ->
+                runOnUiThread {
+                    if (isFinishing || isDestroyed) return@runOnUiThread
+                    switchWirelessMac(targetMac, fromTakeover = true)
+                }
+            }.also { it.start() }
+
         wirelessController =
             WirelessTabController(
                 activity = this,
+                scope = lifecycleScope,
                 views =
                     WirelessTabController.Views(
                         connecting = binding.wirelessConnecting,
@@ -201,8 +213,15 @@ class MainActivity : AppCompatActivity() {
                         idleMacIp = binding.idleMacIp,
                         repairTitle = binding.repairTitle,
                         repairMessage = binding.repairMessage,
+                        pairedMacsHeader = binding.pairedMacsHeader,
+                        refreshScanButton = binding.wirelessRefreshScanButton,
+                        scanStatusText = binding.wirelessScanStatusText,
+                        pairedMacsListContainer = binding.pairedMacsListContainer,
+                        addMacScanButton = binding.wirelessAddMacScanButton,
+                        addMacCodeButton = binding.wirelessAddMacCodeButton,
                     ),
                 storage = pairedHostStorage,
+                discovery = lanHostDiscovery,
                 cameraPerm = cameraPerm,
                 onConnectRequested = { host, port, token, deviceName, macName ->
                     connectWireless(host, port, token, deviceName, macName)
@@ -214,6 +233,32 @@ class MainActivity : AppCompatActivity() {
         if (prefs.connectionMode == ConnectionMode.WIRELESS) {
             wirelessController.show()
         }
+    }
+
+    /**
+     * Switches from the currently active stream (or idle screen) to [targetMac],
+     * triggered either from the tablet's in-stream Settings dialog or by a Mac takeover signal.
+     */
+    private fun switchWirelessMac(
+        targetMac: PairedHostStorage.Entry,
+        fromTakeover: Boolean = false,
+    ) {
+        mainDiag("Switching wireless Mac to ${targetMac.macName} (${targetMac.host}:${targetMac.port}, takeover=$fromTakeover)")
+        if (fromTakeover) {
+            android.widget.Toast
+                .makeText(
+                    this,
+                    "Switching to ${targetMac.macName}…",
+                    android.widget.Toast.LENGTH_SHORT,
+                ).show()
+        }
+        prefs.connectionMode = ConnectionMode.WIRELESS
+        binding.modeToggleGroup.check(R.id.modeWireless)
+        applyModeVisibility(ConnectionMode.WIRELESS)
+        if (isConnected) {
+            disconnect()
+        }
+        wirelessController.connectToEntry(targetMac)
     }
 
     override fun onActivityResult(
@@ -702,11 +747,39 @@ class MainActivity : AppCompatActivity() {
         val resetSettingsBtn = view.findViewById<View>(R.id.resetSettingsButton)
         val disconnectButton = view.findViewById<View>(R.id.disconnectSettingsButton)
         val closeButton = view.findViewById<View>(R.id.closeButton)
+        val switchMacSection = view.findViewById<View>(R.id.switchMacSection)
+        val switchMacButtonsContainer = view.findViewById<android.widget.LinearLayout>(R.id.switchMacButtonsContainer)
 
         // Only show Disconnect when actually streaming. Otherwise the button is
         // a no-op and confuses users into clicking it twice.
         disconnectButton.visibility = if (isStreamingUi) View.VISIBLE else View.GONE
         if (demoActive) (disconnectButton as TextView).text = "Exit demo"
+
+        // Populate "Switch MacBook" section when streaming wirelessly and another paired Mac exists
+        val allPaired = pairedHostStorage.loadAll()
+        val currentActive = allPaired.firstOrNull()
+        val otherMacs = if (isConnected && !demoActive && allPaired.size > 1) allPaired.drop(1) else emptyList()
+        if (otherMacs.isNotEmpty() && switchMacSection != null && switchMacButtonsContainer != null) {
+            switchMacSection.visibility = View.VISIBLE
+            switchMacButtonsContainer.removeAllViews()
+            for (mac in otherMacs) {
+                val btn =
+                    MaterialButton(this).apply {
+                        text = "Switch to ${mac.macName} (${mac.host})"
+                        isAllCaps = false
+                        setTextColor(Color.WHITE)
+                        backgroundTintList = android.content.res.ColorStateList.valueOf(Color.parseColor("#2E7D32"))
+                        cornerRadius = (12 * resources.displayMetrics.density).toInt()
+                        setOnClickListener {
+                            dialog.dismiss()
+                            switchWirelessMac(mac, fromTakeover = false)
+                        }
+                    }
+                switchMacButtonsContainer.addView(btn)
+            }
+        } else {
+            switchMacSection?.visibility = View.GONE
+        }
 
         // Position buttons (8 directions)
         val cornerTopLeft = view.findViewById<MaterialButton>(R.id.cornerTopLeft)
@@ -1663,6 +1736,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun cleanup() {
         try {
+            handoverListener?.stop()
+            handoverListener = null
+            lanHostDiscovery.stop()
             stopDemo()
             disconnect()
             videoDecoder?.release()

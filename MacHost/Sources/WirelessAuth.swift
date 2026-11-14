@@ -3,6 +3,16 @@ import Security
 
 enum WirelessAuth {
     static let userDefaultsKey = "wireless.authToken"
+    static let hostIdDefaultsKey = "wireless.hostId"
+
+    static func loadOrCreateHostId(defaults: UserDefaults = .standard) -> String {
+        if let existing = defaults.string(forKey: hostIdDefaultsKey), !existing.isEmpty {
+            return existing
+        }
+        let fresh = UUID().uuidString.lowercased()
+        defaults.set(fresh, forKey: hostIdDefaultsKey)
+        return fresh
+    }
 
     static func generateToken() -> Data {
         var bytes = [UInt8](repeating: 0, count: 32)

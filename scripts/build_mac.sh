@@ -20,11 +20,19 @@ sleep 0.5
 echo "Cleaning old build..."
 rm -rf .build
 
+# Prefer MacOSX26.5.sdk when only CommandLineTools are installed (MacOSX27.2.sdk requires Xcode's SwiftUIMacros plugin)
+if [ -z "${SDKROOT:-}" ] && [ -d "/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk" ] && [ ! -d "/Applications/Xcode.app" ]; then
+    export SDKROOT="/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk"
+    SWIFT_BUILD_EXTRA="--build-system native"
+else
+    SWIFT_BUILD_EXTRA=""
+fi
+
 # Build fresh (Universal Binary: arm64 + x86_64). One invocation with both
 # --arch flags: separate builds overwrite each other on the Swift 6 .build layout.
 echo "Building macOS Host (universal)..."
-swift build -c release --arch arm64 --arch x86_64
-BIN_DIR=$(swift build -c release --arch arm64 --arch x86_64 --show-bin-path)
+swift build -c release --arch arm64 --arch x86_64 $SWIFT_BUILD_EXTRA
+BIN_DIR=$(swift build -c release --arch arm64 --arch x86_64 $SWIFT_BUILD_EXTRA --show-bin-path)
 mkdir -p ".build/release-universal"
 cp "$BIN_DIR/SideScreen" .build/release-universal/SideScreen
 lipo -archs .build/release-universal/SideScreen
@@ -96,6 +104,17 @@ cat > "$APP_DIR/Contents/Info.plist" << EOF
     <key>NSBonjourServices</key>
     <array>
         <string>_sidescreen._tcp</string>
+    </array>
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>com.sidescreen.app.url</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>sidescreen</string>
+            </array>
+        </dict>
     </array>
 </dict>
 </plist>

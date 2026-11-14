@@ -1,27 +1,94 @@
 import Foundation
 import AppKit
 
-print("🚀 Side Screen starting...")
+// CLI control mode for external launchers (Vorssaint, Shortcuts, Raycast, shell scripts):
+// Usage: SideScreen --takeover | --toggle | --start | --stop | --settings
+let cliArgs = Set(CommandLine.arguments.dropFirst())
+let cliMap: [String: String] = [
+    "--takeover": "takeover",
+    "--toggle": "toggle",
+    "--start": "start",
+    "--stop": "stop",
+    "--settings": "settings"
+]
+if let matched = cliMap.first(where: { cliArgs.contains($0.key) }) {
+    let command = matched.value
+    let running = NSRunningApplication.runningApplications(withBundleIdentifier: "com.sidescreen.app")
+    if !running.isEmpty {
+        DistributedNotificationCenter.default().postNotificationName(
+            NSNotification.Name("com.sidescreen.app.command"),
+            object: command,
+            userInfo: nil,
+            deliverImmediately: true
+        )
+        print("✅ Sent '\(command)' to running Side Screen instance.")
+        exit(0)
+    } else if let url = URL(string: "sidescreen://\(command)") {
+        let config = NSWorkspace.OpenConfiguration()
+        config.activates = (command == "settings")
+        let sem = DispatchSemaphore(value: 0)
+        NSWorkspace.shared.open(url, configuration: config) { _, _ in
+            sem.signal()
+        }
+        _ = sem.wait(timeout: .now() + 3.0)
+        exit(0)
+    }
+}
 
-// No args needed
+print("🚀 Side Screen starting...")
 
 // Entry point
 let app = NSApplication.shared
+let delegate = AppDelegate()
 
-// Setup main menu for keyboard shortcuts (Command+Q, etc.)
+// Setup main menu for keyboard shortcuts & macOS Application Menu bar
 let mainMenu = NSMenu()
 
-// App menu
+// App menu ("Side Screen")
 let appMenu = NSMenu()
 let appMenuItem = NSMenuItem()
 appMenuItem.submenu = appMenu
 appMenu.addItem(NSMenuItem(title: "About Side Screen", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: ""))
-let checkForUpdatesItem = NSMenuItem(title: "Check for Updates…", action: #selector(AppUpdater.checkForUpdates(_:)), keyEquivalent: "")
-checkForUpdatesItem.target = AppUpdater.shared
-appMenu.addItem(checkForUpdatesItem)
+appMenu.addItem(NSMenuItem.separator())
+
+let appTakeoverItem = NSMenuItem(title: "Connect Tablet Here (Takeover)", action: #selector(AppDelegate.requestTabletTakeover), keyEquivalent: "T")
+appTakeoverItem.keyEquivalentModifierMask = [.command, .shift]
+appTakeoverItem.target = delegate
+appMenu.addItem(appTakeoverItem)
+
+let appSettingsItem = NSMenuItem(title: "Settings…", action: #selector(AppDelegate.showSettings), keyEquivalent: ",")
+appSettingsItem.target = delegate
+appMenu.addItem(appSettingsItem)
+
 appMenu.addItem(NSMenuItem.separator())
 appMenu.addItem(NSMenuItem(title: "Quit Side Screen", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
 mainMenu.addItem(appMenuItem)
+
+// Stream menu (also indexed by Vorssaint Command Bar menu search!)
+let streamMenu = NSMenu(title: "Stream")
+let streamMenuItem = NSMenuItem(title: "Stream", action: nil, keyEquivalent: "")
+streamMenuItem.submenu = streamMenu
+
+let streamTakeoverItem = NSMenuItem(title: "Connect Tablet Here (Takeover)", action: #selector(AppDelegate.requestTabletTakeover), keyEquivalent: "T")
+streamTakeoverItem.keyEquivalentModifierMask = [.command, .shift]
+streamTakeoverItem.target = delegate
+streamMenu.addItem(streamTakeoverItem)
+
+let streamToggleItem = NSMenuItem(title: "Start / Stop Streaming", action: #selector(AppDelegate.toggleServerFromMenu), keyEquivalent: "t")
+streamToggleItem.target = delegate
+streamMenu.addItem(streamToggleItem)
+
+streamMenu.addItem(NSMenuItem.separator())
+
+let streamWirelessItem = NSMenuItem(title: "Switch to Wireless Mode", action: #selector(AppDelegate.selectWirelessMode), keyEquivalent: "")
+streamWirelessItem.target = delegate
+streamMenu.addItem(streamWirelessItem)
+
+let streamUSBItem = NSMenuItem(title: "Switch to USB Mode", action: #selector(AppDelegate.selectUSBMode), keyEquivalent: "")
+streamUSBItem.target = delegate
+streamMenu.addItem(streamUSBItem)
+
+mainMenu.addItem(streamMenuItem)
 
 // Edit menu (for standard text editing shortcuts)
 let editMenu = NSMenu(title: "Edit")
@@ -34,10 +101,6 @@ editMenu.addItem(NSMenuItem(title: "Select All", action: #selector(NSText.select
 mainMenu.addItem(editMenuItem)
 
 app.mainMenu = mainMenu
-
-let delegate = AppDelegate()
-
 app.setActivationPolicy(.regular)
-
 app.delegate = delegate
 app.run()

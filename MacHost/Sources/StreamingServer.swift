@@ -60,6 +60,21 @@ private extension NWEndpoint {
             return false
         }
     }
+
+    var remoteIPv4String: String? {
+        switch self {
+        case .hostPort(let host, _):
+            switch host {
+            case .ipv4(let v4):
+                let raw = "\(v4)"
+                return raw.split(separator: "%").first.map(String.init)
+            default:
+                return nil
+            }
+        default:
+            return nil
+        }
+    }
 }
 
 enum StreamingServerStartError: LocalizedError {
@@ -181,7 +196,8 @@ class StreamingServer {
     // 32-byte token before being allowed to proceed. nil means wireless mode
     // is inactive — non-loopback connections are rejected immediately.
     var expectedAuthToken: Data?
-    var onWirelessClientPaired: ((String) -> Void)?
+    var bonjourHostId: String?
+    var onWirelessClientPaired: ((_ deviceName: String, _ clientAddress: String?) -> Void)?
 
     /// Asked once per connection, on the network queue, right before the
     /// display config would go out: `key` is the tablet's profile key (type 18
@@ -220,10 +236,10 @@ class StreamingServer {
     }
 
     var pairingMacName: String = "Mac"
-    /// Fired with the device name after a code was accepted and the token
+    /// Fired with the device name and remote IPv4 after a code was accepted and the token
     /// issued. The code is already consumed (nil); the owner should install a
     /// fresh one.
-    var onPairingSuccess: ((String) -> Void)?
+    var onPairingSuccess: ((_ deviceName: String, _ clientAddress: String?) -> Void)?
     /// Fired when the attempt budget is exhausted. The code is already
     /// invalidated (nil); the owner should install a fresh one.
     var onPairingCodeExhausted: (() -> Void)?
@@ -289,6 +305,19 @@ class StreamingServer {
             }
 
             newListener = try NWListener(using: params, on: NWEndpoint.Port(integerLiteral: port))
+            if expectedAuthToken != nil {
+                var txtRecord = NWTXTRecord()
+                if let hostId = bonjourHostId, !hostId.isEmpty {
+                    txtRecord["id"] = hostId
+                }
+                txtRecord["name"] = pairingMacName
+                txtRecord["port"] = "\(port)"
+                newListener.service = NWListener.Service(
+                    name: pairingMacName,
+                    type: "_sidescreen._tcp",
+                    txtRecord: txtRecord
+                )
+            }
         } catch {
             debugLog("Failed to start server: \(error)")
             throw StreamingServerStartError.listenerFailed(port: port, underlying: error)
@@ -491,7 +520,7 @@ class StreamingServer {
                         debugLog("Wireless auth OK — device: \(parsed.deviceName)")
                         self.sendAuthResponse(conn, status: .ok, thenClose: false)
                         self.handshakeDeviceName = parsed.deviceName
-                        self.onWirelessClientPaired?(parsed.deviceName)
+                        self.onWirelessClientPaired?(parsed.deviceName, conn.endpoint.remoteIPv4String)
                         self.beginExistingProtocol(on: conn)
                     } else {
                         debugLog("Wireless auth rejected: token mismatch")
@@ -550,7 +579,7 @@ class StreamingServer {
                 case .issued(let token):
                     debugLog("Pairing code accepted — issuing token to \(parsed.deviceName)")
                     self.sendPairingResponse(conn, status: .ok, token: token)
-                    self.onPairingSuccess?(parsed.deviceName)
+                    self.onPairingSuccess?(parsed.deviceName, conn.endpoint.remoteIPv4String)
                 case .rejected:
                     debugLog("Pairing code rejected")
                     self.sendPairingResponse(conn, status: .invalidCode)

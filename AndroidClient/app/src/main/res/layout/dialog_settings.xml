@@ -370,6 +370,41 @@
                 app:backgroundTint="#1AFFFFFF" />
         </LinearLayout>
 
+        <!-- Switch Mac Section (shown when streaming and >=2 Macs are paired) -->
+        <LinearLayout
+            android:id="@+id/switchMacSection"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/settings_item_bg"
+            android:padding="16dp"
+            android:layout_marginTop="12dp"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Switch MacBook"
+                android:textColor="#FFFFFF"
+                android:textSize="17sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="4dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Disconnect current Mac and connect directly to another paired Mac"
+                android:textColor="#999999"
+                android:textSize="12sp"
+                android:layout_marginBottom="10dp" />
+
+            <LinearLayout
+                android:id="@+id/switchMacButtonsContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+        </LinearLayout>
+
         <!-- Disconnect Button -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/disconnectSettingsButton"

@@ -3,6 +3,7 @@ import Foundation
 struct PairedDevice: Codable, Equatable {
     let name: String
     let lastConnected: Date
+    var lastAddress: String?
 }
 
 final class PairedDeviceStore {
@@ -22,10 +23,11 @@ final class PairedDeviceStore {
         return decoded.sorted { $0.lastConnected > $1.lastConnected }
     }
 
-    func upsert(name: String, lastConnected: Date) {
+    func upsert(name: String, lastConnected: Date, lastAddress: String? = nil) {
         var current = all()
+        let previousAddress = current.first(where: { $0.name == name })?.lastAddress
         current.removeAll { $0.name == name }
-        current.append(PairedDevice(name: name, lastConnected: lastConnected))
+        current.append(PairedDevice(name: name, lastConnected: lastConnected, lastAddress: lastAddress ?? previousAddress))
         save(current)
     }
 

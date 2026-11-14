@@ -971,6 +971,22 @@ struct SettingsView: View {
                         .controlSize(.large)
                         .disabled(!settings.hasScreenRecordingPermission)
 
+                        Button(action: {
+                            settings.requestTakeover()
+                        }) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "ipad.and.arrow.forward")
+                                    .font(.system(size: 12))
+                                Text("Takeover")
+                                    .font(.system(size: 13, weight: .medium))
+                            }
+                            .padding(.horizontal, 6)
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.large)
+                        .disabled(!settings.hasScreenRecordingPermission)
+                        .help("Pull your paired tablet to this Mac (⌘⇧T)")
+
                         if settings.isRunning {
                             HStack(spacing: 6) {
                                 Circle()
@@ -1371,6 +1387,7 @@ class DisplaySettings: ObservableObject {
     @Published var captureMethod: String = "Initializing..."
 
     var onToggleServer: (() -> Void)?
+    var onRequestTakeover: (() -> Void)?
 
     init() {
         self.resolution = defaults.string(forKey: keyPrefix + "resolution") ?? "1920x1200"
@@ -1494,6 +1511,10 @@ class DisplaySettings: ObservableObject {
 
     func toggleServer() {
         onToggleServer?()
+    }
+
+    func requestTakeover() {
+        onRequestTakeover?()
     }
 
     func resetToDefaults() {
@@ -1740,6 +1761,20 @@ struct WirelessSection: View {
                 .controlSize(.small)
                 .foregroundColor(.red)
                 .padding(.top, 6)
+
+                Divider().padding(.vertical, 4)
+                Button(action: {
+                    settings.requestTakeover()
+                }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "ipad.and.arrow.forward")
+                        Text("Connect Tablet Here (Takeover)")
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.regular)
+                .help("Pulls your paired tablet to this Mac, even if it is currently connected to another MacBook (⌘⇧T).")
             },
             trailing: {
                 Button(action: {
@@ -1781,9 +1816,10 @@ struct WirelessSection: View {
 
     private func refreshQR() {
         let token = WirelessAuth.loadOrCreate()
+        let hostId = WirelessAuth.loadOrCreateHostId()
         let host = LANAddressResolver.primaryIPv4() ?? "0.0.0.0"
         let name = Host.current().localizedName ?? "Mac"
-        let url = PairingURL.build(host: host, port: settings.port, token: token, name: name)
+        let url = PairingURL.build(host: host, port: settings.port, token: token, name: name, hostId: hostId)
         qrImage = QRRenderer.render(url: url, size: 180)
     }
 
