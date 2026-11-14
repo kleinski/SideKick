@@ -31,6 +31,27 @@
 
 ---
 
+## Branch-Strategie (`main` vs. `sidekick`)
+
+- **`main` (Upstream-PR-Branch, Commit `487002d`):**
+  - Behält alle Original-Namen (`Side Screen`), Bundle-/App-IDs (`com.sidescreen.app`) und Sparkle/Play-Einstellungen bei.
+  - Enthält ausschließlich die sauberen Feature-Erweiterungen (Multi-Mac-Persistenz, Bonjour-Discovery, Smart Auto-Connect, Zwei-Wege-Takeover, Menü-/Footer-Integration, URL-Schema & CLI). Damit lassen sich jederzeit ohne Rebranding-Ballast Pull Requests gegen `tranvuongquocdat/SideScreen` stellen.
+- **`sidekick` (Dein lokaler Branch, aktuell ausgecheckt, Commit `7c82038`):**
+  - Setzt Name & IDs durchgehend auf **SideKick** (`SideKick.app`, macOS Bundle-ID `com.sidekick.app`, Android `applicationId = "com.sidekick.app"` in `AndroidClient/app/build.gradle.kts`).
+  - Deaktiviert sowohl Sparkle-Checks (`MacHost/Info.plist`, `scripts/build_mac.sh`) als auch den Google-Play-Updater (`AndroidClient/app/src/main/java/com/sidescreen/app/AppUpdater.kt`).
+  - Wenn vom Original-Autor Updates kommen:
+    ```bash
+    git checkout main && git pull upstream main && git checkout sidekick && git rebase main
+    ```
+
+### Lokale Steuerung & Vorssaint-Integration (`sidekick`-Branch)
+
+- **URL-Schema:** `sidekick://takeover`, `sidekick://toggle`, `sidekick://start`, `sidekick://stop`, `sidekick://settings`
+- **CLI-Flags:** `/Applications/SideKick.app/Contents/MacOS/SideKick --takeover` (oder `--toggle`, `--start`, `--stop`, `--settings`)
+- **Vorssaint Command Bar:** `./scripts/register_vorssaint.sh` registriert die SideKick-Aktionen direkt in Vorssaint (`com.vorssaint.utils` -> `commandBarLinks`).
+
+---
+
 <div align="center">
   <img src="resources/screenshots/hero_screenshot.jpeg" alt="Side Screen — Mac + Android tablet as second display" width="800"/>
 </div>
