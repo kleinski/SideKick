@@ -58,7 +58,18 @@ def write_links(links):
     hex_str = payload_bytes.hex()
     subprocess.check_call(["defaults", "write", DOMAIN, KEY, "-data", hex_str])
 
+def is_vorssaint_running():
+    res = subprocess.run(["pgrep", "-x", "Vorssaint"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return res.returncode == 0
+
 def main():
+    was_running = is_vorssaint_running()
+    if was_running:
+        print("⏸️  Stopping Vorssaint briefly so it doesn't overwrite UserDefaults...")
+        subprocess.run(["killall", "Vorssaint"], stderr=subprocess.DEVNULL)
+        import time
+        time.sleep(0.8)
+
     existing = read_existing_links()
     sidekick_dests = {item["destination"] for item in SIDEKICK_LINKS}
     filtered = [
@@ -69,9 +80,14 @@ def main():
     ]
     merged = SIDEKICK_LINKS + filtered
     write_links(merged)
+    subprocess.run(["killall", "cfprefsd"], stderr=subprocess.DEVNULL)
     print(f"✅ Registered {len(SIDEKICK_LINKS)} SideKick actions in Vorssaint Command Bar ({DOMAIN} -> {KEY}).")
     for item in SIDEKICK_LINKS:
         print(f"   • {item['name']}  →  {item['destination']}")
+
+    if was_running:
+        print("▶️  Restarting Vorssaint...")
+        subprocess.run(["open", "-a", "Vorssaint"], stderr=subprocess.DEVNULL)
 
 if __name__ == "__main__":
     main()
