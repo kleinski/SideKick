@@ -65,6 +65,13 @@ if [ -f "$ROOT_DIR/MacHost/Resources/AppIcon.icns" ]; then
     echo "  ✓ App icon copied"
 fi
 
+# Bundle Vorssaint registration script inside the .app so no separate script copy is needed
+if [ -f "$ROOT_DIR/scripts/register_vorssaint.sh" ]; then
+    cp "$ROOT_DIR/scripts/register_vorssaint.sh" "$APP_DIR/Contents/Resources/register_vorssaint.sh"
+    chmod +x "$APP_DIR/Contents/Resources/register_vorssaint.sh"
+    echo "  ✓ Vorssaint integration script bundled"
+fi
+
 # Create Info.plist
 cat > "$APP_DIR/Contents/Info.plist" << EOF
 <?xml version="1.0" encoding="UTF-8"?>

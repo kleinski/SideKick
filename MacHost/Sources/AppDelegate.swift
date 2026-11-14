@@ -101,6 +101,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             object: nil
         )
 
+        // Automatically register SideKick actions in Vorssaint on first launch if Vorssaint.app is installed
+        ensureVorssaintIntegrationIfInstalled()
+
         // Check permissions
         Task {
             await checkPermissions()
@@ -491,6 +494,29 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc func requestQuit(_ sender: Any?) {
         isExplicitQuitRequested = true
         NSApp.terminate(sender)
+    }
+
+    private func ensureVorssaintIntegrationIfInstalled() {
+        guard FileManager.default.fileExists(atPath: "/Applications/Vorssaint.app") else { return }
+        let flagKey = "vorssaintLinksRegisteredV1"
+        guard !UserDefaults.standard.bool(forKey: flagKey) else { return }
+        UserDefaults.standard.set(true, forKey: flagKey)
+        registerInVorssaint()
+    }
+
+    @objc func registerInVorssaint() {
+        guard let scriptPath = Bundle.main.path(forResource: "register_vorssaint", ofType: "sh") else {
+            debugLog("register_vorssaint.sh not found in app bundle")
+            return
+        }
+        Task.detached {
+            let proc = Process()
+            proc.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+            proc.arguments = ["python3", scriptPath]
+            try? proc.run()
+            proc.waitUntilExit()
+            debugLog("✅ Vorssaint integration script completed with status \(proc.terminationStatus)")
+        }
     }
 
     func checkPermissions() async {
@@ -1510,6 +1536,12 @@ extension AppDelegate: NSMenuDelegate {
         let settingsItem = NSMenuItem(title: "Settings…", action: #selector(showSettings), keyEquivalent: "s")
         settingsItem.target = self
         menu.addItem(settingsItem)
+
+        if FileManager.default.fileExists(atPath: "/Applications/Vorssaint.app") {
+            let vorssaintItem = NSMenuItem(title: "Register Actions in Vorssaint", action: #selector(registerInVorssaint), keyEquivalent: "")
+            vorssaintItem.target = self
+            menu.addItem(vorssaintItem)
+        }
 
         menu.addItem(.separator())
         let quitMenuItem = NSMenuItem(title: "Quit SideKick", action: #selector(requestQuit(_:)), keyEquivalent: "q")
