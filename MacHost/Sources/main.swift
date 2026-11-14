@@ -13,7 +13,8 @@ let cliMap: [String: String] = [
 ]
 if let matched = cliMap.first(where: { cliArgs.contains($0.key) }) {
     let command = matched.value
-    let running = NSRunningApplication.runningApplications(withBundleIdentifier: "com.sidescreen.app")
+    let running = NSRunningApplication.runningApplications(withBundleIdentifier: "com.sidekick.app")
+        + NSRunningApplication.runningApplications(withBundleIdentifier: "com.sidescreen.app")
     if !running.isEmpty {
         DistributedNotificationCenter.default().postNotificationName(
             NSNotification.Name("com.sidescreen.app.command"),
@@ -21,9 +22,9 @@ if let matched = cliMap.first(where: { cliArgs.contains($0.key) }) {
             userInfo: nil,
             deliverImmediately: true
         )
-        print("✅ Sent '\(command)' to running Side Screen instance.")
+        print("✅ Sent '\(command)' to running SideKick instance.")
         exit(0)
-    } else if let url = URL(string: "sidescreen://\(command)") {
+    } else if let url = URL(string: "sidekick://\(command)") {
         let config = NSWorkspace.OpenConfiguration()
         config.activates = (command == "settings")
         let sem = DispatchSemaphore(value: 0)
@@ -35,7 +36,7 @@ if let matched = cliMap.first(where: { cliArgs.contains($0.key) }) {
     }
 }
 
-print("🚀 Side Screen starting...")
+print("🚀 SideKick starting...")
 
 // Entry point
 let app = NSApplication.shared
@@ -44,11 +45,11 @@ let delegate = AppDelegate()
 // Setup main menu for keyboard shortcuts & macOS Application Menu bar
 let mainMenu = NSMenu()
 
-// App menu ("Side Screen")
+// App menu ("SideKick")
 let appMenu = NSMenu()
 let appMenuItem = NSMenuItem()
 appMenuItem.submenu = appMenu
-appMenu.addItem(NSMenuItem(title: "About Side Screen", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: ""))
+appMenu.addItem(NSMenuItem(title: "About SideKick", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: ""))
 appMenu.addItem(NSMenuItem.separator())
 
 let appTakeoverItem = NSMenuItem(title: "Connect Tablet Here (Takeover)", action: #selector(AppDelegate.requestTabletTakeover), keyEquivalent: "T")
@@ -61,7 +62,7 @@ appSettingsItem.target = delegate
 appMenu.addItem(appSettingsItem)
 
 appMenu.addItem(NSMenuItem.separator())
-appMenu.addItem(NSMenuItem(title: "Quit Side Screen", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+appMenu.addItem(NSMenuItem(title: "Quit SideKick", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
 mainMenu.addItem(appMenuItem)
 
 // Stream menu (also indexed by Vorssaint Command Bar menu search!)

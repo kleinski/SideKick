@@ -35,27 +35,8 @@ class AppUpdater(
             }
         }
 
-    /** Call when the app is idle (not streaming) — typically from onResume. */
+    /** Call when the app is idle (not streaming) — disabled in SideKick fork. */
     fun checkForUpdate() {
-        manager.appUpdateInfo
-            .addOnSuccessListener { info ->
-                val availability = info.updateAvailability()
-                // DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS: an immediate flow was interrupted
-                // (e.g. the app was backgrounded mid-download); resume it the same way.
-                val wanted =
-                    availability == UpdateAvailability.UPDATE_AVAILABLE ||
-                        availability == UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS
-                if (wanted && info.isUpdateTypeAllowed(AppUpdateType.IMMEDIATE)) {
-                    updDiag("Update required: versionCode=${info.availableVersionCode()}")
-                    manager.startUpdateFlowForResult(
-                        info,
-                        launcher,
-                        AppUpdateOptions.newBuilder(AppUpdateType.IMMEDIATE).build(),
-                    )
-                }
-            }.addOnFailureListener { e ->
-                // Expected for non-Play installs (APK from GitHub, .debug build).
-                updDiag("Update check unavailable: ${e.message}")
-            }
+        // Disabled in SideKick branch so Google Play never forces an upstream update.
     }
 }

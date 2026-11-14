@@ -26,14 +26,19 @@ if [ -z "${JAVA_HOME:-}" ] || [ ! -d "$JAVA_HOME" ]; then
     exit 1
 fi
 
-./gradlew assembleDebug
+VERSION=$(cat "$ROOT_DIR/VERSION" | tr -d '[:space:]')
+./gradlew assembleDebug assembleRelease
+
+cp "$ROOT_DIR/AndroidClient/app/build/outputs/apk/debug/app-debug.apk" "$ROOT_DIR/SideKick-${VERSION}-android-debug.apk"
+cp "$ROOT_DIR/AndroidClient/app/build/outputs/apk/release/app-release.apk" "$ROOT_DIR/SideKick-${VERSION}-android-release.apk"
 
 echo ""
 echo "✅ Build successful!"
 echo ""
-echo "📦 APK: $ROOT_DIR/AndroidClient/app/build/outputs/apk/debug/app-debug.apk"
+echo "📦 Release APK: $ROOT_DIR/SideKick-${VERSION}-android-release.apk"
+echo "📦 Debug APK:   $ROOT_DIR/SideKick-${VERSION}-android-debug.apk"
 echo ""
 echo "To install on device:"
-echo "  adb install -r $ROOT_DIR/AndroidClient/app/build/outputs/apk/debug/app-debug.apk"
+echo "  adb install -r $ROOT_DIR/SideKick-${VERSION}-android-release.apk"
 echo ""
 echo "Or run: ./scripts/install_android.sh"

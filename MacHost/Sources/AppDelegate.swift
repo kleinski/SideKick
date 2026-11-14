@@ -149,7 +149,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func application(_ application: NSApplication, open urls: [URL]) {
-        for url in urls where url.scheme?.lowercased() == "sidescreen" {
+        for url in urls {
+            let scheme = url.scheme?.lowercased() ?? ""
+            guard scheme == "sidescreen" || scheme == "sidekick" else { continue }
             let cmd = (url.host ?? url.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))).lowercased()
             handleExternalAction(cmd)
         }
@@ -1470,6 +1472,6 @@ extension AppDelegate: NSMenuDelegate {
         menu.addItem(settingsItem)
 
         menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "Quit Side Screen", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        menu.addItem(NSMenuItem(title: "Quit SideKick", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
     }
 }

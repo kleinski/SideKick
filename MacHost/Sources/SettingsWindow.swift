@@ -120,7 +120,7 @@ struct SettingsView: View {
 
                     VStack(alignment: .leading, spacing: 3) {
                         HStack(alignment: .firstTextBaseline, spacing: 8) {
-                            Text("Side Screen")
+                            Text("SideKick")
                                 .font(.system(size: 20, weight: .bold, design: .rounded))
                             Text("v\(AppInfo.version)")
                                 .font(.system(size: 11, weight: .semibold, design: .rounded))

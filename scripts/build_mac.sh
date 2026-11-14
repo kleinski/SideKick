@@ -12,7 +12,8 @@ echo "Building version $VERSION..."
 cd "$ROOT_DIR/MacHost"
 
 # Kill running instance
-echo "Stopping running Side Screen..."
+echo "Stopping running SideKick..."
+pkill -f SideKick 2>/dev/null || true
 pkill -f SideScreen 2>/dev/null || true
 sleep 0.5
 
@@ -38,7 +39,7 @@ cp "$BIN_DIR/SideScreen" .build/release-universal/SideScreen
 lipo -archs .build/release-universal/SideScreen
 
 # Create .app bundle
-APP_NAME="SideScreen"
+APP_NAME="SideKick"
 APP_DIR="$ROOT_DIR/$APP_NAME.app"
 
 echo "Creating app bundle..."
@@ -47,7 +48,8 @@ mkdir -p "$APP_DIR/Contents/MacOS"
 mkdir -p "$APP_DIR/Contents/Resources"
 
 # Copy universal binary
-cp .build/release-universal/SideScreen "$APP_DIR/Contents/MacOS/"
+cp .build/release-universal/SideScreen "$APP_DIR/Contents/MacOS/SideKick"
+ln -sf SideKick "$APP_DIR/Contents/MacOS/SideScreen"
 
 # Sparkle (auto-update) ships as a framework next to the binary
 mkdir -p "$APP_DIR/Contents/Frameworks"
@@ -68,15 +70,15 @@ cat > "$APP_DIR/Contents/Info.plist" << EOF
 <plist version="1.0">
 <dict>
     <key>CFBundleExecutable</key>
-    <string>SideScreen</string>
+    <string>SideKick</string>
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
     <key>CFBundleIdentifier</key>
-    <string>com.sidescreen.app</string>
+    <string>com.sidekick.app</string>
     <key>CFBundleName</key>
-    <string>Side Screen</string>
+    <string>SideKick</string>
     <key>CFBundleDisplayName</key>
-    <string>Side Screen</string>
+    <string>SideKick</string>
     <key>CFBundleVersion</key>
     <string>$VERSION</string><!-- VERSION -->
     <key>CFBundleShortVersionString</key>
@@ -87,20 +89,16 @@ cat > "$APP_DIR/Contents/Info.plist" << EOF
     <string>13.0</string>
     <key>LSUIElement</key>
     <false/>
-    <key>SUFeedURL</key>
-    <string>https://github.com/tranvuongquocdat/SideScreen/releases/latest/download/appcast.xml</string>
-    <key>SUPublicEDKey</key>
-    <string>7bJdS/tTNvOEUEobUTrH7IxJsg/FBZcmSHyzY4ZU97I=</string>
     <key>SUEnableAutomaticChecks</key>
-    <true/>
+    <false/>
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>NSSupportsAutomaticGraphicsSwitching</key>
     <true/>
     <key>NSScreenCaptureUsageDescription</key>
-    <string>Side Screen needs screen recording access to capture your virtual display and stream it to your Android device.</string>
+    <string>SideKick needs screen recording access to capture your virtual display and stream it to your Android device.</string>
     <key>NSLocalNetworkUsageDescription</key>
-    <string>Side Screen needs Local Network access so your Android tablet can connect to the Mac over WiFi for wireless mode. Without this, only USB-tethered connections work.</string>
+    <string>SideKick needs Local Network access so your Android tablet can connect to the Mac over WiFi for wireless mode. Without this, only USB-tethered connections work.</string>
     <key>NSBonjourServices</key>
     <array>
         <string>_sidescreen._tcp</string>
@@ -109,9 +107,10 @@ cat > "$APP_DIR/Contents/Info.plist" << EOF
     <array>
         <dict>
             <key>CFBundleURLName</key>
-            <string>com.sidescreen.app.url</string>
+            <string>com.sidekick.app.url</string>
             <key>CFBundleURLSchemes</key>
             <array>
+                <string>sidekick</string>
                 <string>sidescreen</string>
             </array>
         </dict>
@@ -146,8 +145,8 @@ echo "Creating DMG..."
 DMG_DIR=$(mktemp -d)
 cp -R "$APP_DIR" "$DMG_DIR/"
 ln -s /Applications "$DMG_DIR/Applications"
-DMG_PATH="$ROOT_DIR/SideScreen-${VERSION}-mac-universal.dmg"
-hdiutil create -volname "Side Screen" -srcfolder "$DMG_DIR" -ov -format UDZO "$DMG_PATH"
+DMG_PATH="$ROOT_DIR/SideKick-${VERSION}-mac-universal.dmg"
+hdiutil create -volname "SideKick" -srcfolder "$DMG_DIR" -ov -format UDZO "$DMG_PATH"
 if [ -n "${SIDESCREEN_SIGN_IDENTITY:-}" ]; then
     codesign --sign "$SIDESCREEN_SIGN_IDENTITY" --timestamp "$DMG_PATH"
     [ -n "${APPSTORE_API_KEY_P8:-}" ] && "$ROOT_DIR/scripts/notarize.sh" "$DMG_PATH"
