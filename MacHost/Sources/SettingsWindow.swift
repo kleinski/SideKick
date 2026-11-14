@@ -1033,7 +1033,7 @@ struct SettingsView: View {
 
                         // Quit button
                         Button(action: {
-                            NSApp.terminate(nil)
+                            (NSApp.delegate as? AppDelegate)?.requestQuit(nil)
                         }) {
                             Image(systemName: "power")
                                 .font(.system(size: 12, weight: .medium))
@@ -1074,7 +1074,7 @@ struct SettingsView: View {
         do {
             try task.run()
             // Terminate current app
-            NSApp.terminate(nil)
+            (NSApp.delegate as? AppDelegate)?.requestQuit(nil)
         } catch {
             print("❌ Failed to restart: \(error)")
         }
@@ -1587,6 +1587,15 @@ class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
         self.init(window: window)
         window.delegate = self
+    }
+
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        if let appDelegate = NSApp.delegate as? AppDelegate {
+            appDelegate.closeSettingsWindowToBackground()
+            return false
+        }
+        sender.orderOut(nil)
+        return false
     }
 
     func windowDidMove(_ notification: Notification) {

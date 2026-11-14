@@ -17,9 +17,11 @@ pkill -f SideKick 2>/dev/null || true
 pkill -f SideScreen 2>/dev/null || true
 sleep 0.5
 
-# Clean old build
-echo "Cleaning old build..."
-rm -rf .build
+# Clean old build only when --clean is requested
+if [ "${1:-}" = "--clean" ]; then
+    echo "Cleaning old build..."
+    rm -rf .build
+fi
 
 # Prefer MacOSX26.5.sdk when only CommandLineTools are installed (MacOSX27.2.sdk requires Xcode's SwiftUIMacros plugin)
 if [ -z "${SDKROOT:-}" ] && [ -d "/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk" ] && [ ! -d "/Applications/Xcode.app" ]; then

@@ -76,6 +76,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// the refresh-rate observer skip restarts that would change nothing.
     private var lastAppliedRefreshRate: Int?
     var isDaemonMode = false // Deprecated: keeping variable for ABI compatibility but unused
+    /// Set to true only when the user explicitly triggers Quit (Menu Bar, ⌘Q, or Settings Power/Restart button).
+    /// Prevents external window managers (e.g. Vorssaint "Quit on Close") from killing SideKick when closing Settings.
+    var isExplicitQuitRequested = false
+    var lastWindowCloseTime: Date = .distantPast
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         print("✅ App launched")
@@ -116,8 +120,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if #available(macOS 13.0, *) {
             if DaemonManager.shared.isEnabled {
                 print("🚀 Launch at Login is enabled - starting silently in background")
-                // Do not show settings window automatically.
-                // applicationShouldHandleReopen will show it if the user manually launched the app.
+                NSApp.setActivationPolicy(.accessory)
             } else {
                 showSettings()
             }
@@ -466,8 +469,28 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc func showSettings() {
+        NSApp.setActivationPolicy(.regular)
         settingsWindow?.showWindow(nil)
+        settingsWindow?.window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    @objc func closeSettingsWindowFromMenu() {
+        closeSettingsWindowToBackground()
+    }
+
+    func closeSettingsWindowToBackground() {
+        lastWindowCloseTime = Date()
+        settingsWindow?.window?.orderOut(nil)
+        // Run as a menu bar utility (no Dock icon) while Settings is closed so
+        // window managers like Vorssaint "Quit on Close" don't treat it as an idle Dock app.
+        NSApp.setActivationPolicy(.accessory)
+        debugLog("Settings window closed — SideKick continues running in menu bar")
+    }
+
+    @objc func requestQuit(_ sender: Any?) {
+        isExplicitQuitRequested = true
+        NSApp.terminate(sender)
     }
 
     func checkPermissions() async {
@@ -1385,6 +1408,23 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         momentumVelocityY = 0
     }
 
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        if isExplicitQuitRequested {
+            return .terminateNow
+        }
+        // If the Settings window is currently open or was just closed (e.g. Vorssaint "Quit on Close"
+        // sent NSRunningApplication.terminate() when clicking the red close button), hide Settings
+        // and keep SideKick alive in the menu bar instead of terminating.
+        let windowVisible = settingsWindow?.window?.isVisible ?? false
+        let recentlyClosed = Date().timeIntervalSince(lastWindowCloseTime) < 3.0
+        if windowVisible || recentlyClosed {
+            debugLog("🛡️ Intercepted external quit on window close — keeping SideKick running in menu bar")
+            closeSettingsWindowToBackground()
+            return .terminateCancel
+        }
+        return .terminateNow
+    }
+
     func applicationWillTerminate(_ notification: Notification) {
         // Stop momentum scrolling
         stopMomentumScroll()
@@ -1472,6 +1512,8 @@ extension AppDelegate: NSMenuDelegate {
         menu.addItem(settingsItem)
 
         menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "Quit SideKick", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        let quitMenuItem = NSMenuItem(title: "Quit SideKick", action: #selector(requestQuit(_:)), keyEquivalent: "q")
+        quitMenuItem.target = self
+        menu.addItem(quitMenuItem)
     }
 }

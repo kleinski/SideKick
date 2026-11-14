@@ -61,8 +61,14 @@ let appSettingsItem = NSMenuItem(title: "Settings…", action: #selector(AppDele
 appSettingsItem.target = delegate
 appMenu.addItem(appSettingsItem)
 
+let closeWindowItem = NSMenuItem(title: "Close Settings Window", action: #selector(AppDelegate.closeSettingsWindowFromMenu), keyEquivalent: "w")
+closeWindowItem.target = delegate
+appMenu.addItem(closeWindowItem)
+
 appMenu.addItem(NSMenuItem.separator())
-appMenu.addItem(NSMenuItem(title: "Quit SideKick", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+let quitItem = NSMenuItem(title: "Quit SideKick", action: #selector(AppDelegate.requestQuit(_:)), keyEquivalent: "q")
+quitItem.target = delegate
+appMenu.addItem(quitItem)
 mainMenu.addItem(appMenuItem)
 
 // Stream menu (also indexed by Vorssaint Command Bar menu search!)
