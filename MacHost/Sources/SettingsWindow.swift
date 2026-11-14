@@ -771,9 +771,9 @@ struct SettingsView: View {
                         FrostedGroupBox(title: "Status", icon: "checkmark.circle") {
                             VStack(alignment: .leading, spacing: 12) {
                                 StatusRow(title: "Virtual Display",
-                                          status: settings.displayCreated ? "Active" : "Inactive",
-                                          color: settings.displayCreated ? .green : .secondary,
-                                          hint: "The macOS virtual display we render into. Created when you click Start; the tablet streams its pixels.")
+                                          status: settings.displayCreated ? "Active" : (settings.isRunning ? "Standby (on connect)" : "Inactive"),
+                                          color: settings.displayCreated ? .green : (settings.isRunning ? .orange : .secondary),
+                                          hint: "The macOS virtual display we render into. Created automatically only when a tablet connects, and removed when it disconnects so windows never get stranded on an unseen screen.")
                                 StatusRow(title: "Client Connected",
                                           status: settings.clientConnected ? "Yes" : "No",
                                           color: settings.clientConnected ? .green : .secondary,

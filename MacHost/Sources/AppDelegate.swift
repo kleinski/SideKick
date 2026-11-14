@@ -376,10 +376,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// Stop-and-restart the server to rebuild the virtual display and capture
-    /// pipeline. No-op while stopped.
+    /// pipeline. No-op while stopped or when no client display is active yet.
     private func restartRunningServer(reason: String) {
         Task { @MainActor in
-            guard self.settings.isRunning else { return }
+            guard self.settings.isRunning, self.settings.displayCreated else { return }
             debugLog("\(reason) — restarting server to rebuild virtual display")
             self.stopServer()
             await self.startServer()
@@ -690,28 +690,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         do {
-            // Create virtual display and run ADB setup in parallel
-            let manager = VirtualDisplayManager()
-            virtualDisplayManager = manager
-            try createVirtualDisplay(on: manager)
-
+            // Prepare virtual display manager, but do NOT create the virtual display yet!
+            // The virtual display is created on-demand in prepareProfile() only when a
+            // tablet actually connects, and destroyed when it disconnects — preventing
+            // macOS from moving windows onto an unseen second desktop while waiting.
+            virtualDisplayManager = VirtualDisplayManager()
             await MainActor.run {
-                settings.displayCreated = true
+                settings.displayCreated = false
             }
 
-            // Run ADB setup (USB only) and display init wait in parallel.
-            // For wireless mode, skip ADB entirely — the auth handshake gates LAN connections instead.
-            await withTaskGroup(of: Void.self) { group in
-                if settings.connectionMode == .usb {
-                    group.addTask { await self.setupADBReverse() }
-                } else {
-                    debugLog("Wireless mode: skipping ADB setup")
-                }
-                group.addTask { try? await Task.sleep(nanoseconds: 500_000_000) }
+            if settings.connectionMode == .usb {
+                await self.setupADBReverse()
+            } else {
+                debugLog("Wireless mode: skipping ADB setup")
             }
-
-            manager.restoreDisplayPosition()
-            screenCapture = try await makeCapture(for: manager)
 
             // Setup server
             streamingServer = StreamingServer(port: settings.port)
@@ -729,9 +721,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     }
                 }
             }
-            configureDisplayGeometry(on: streamingServer, for: manager)
             streamingServer?.onPrepareForClient = { [weak self] key, name in
-                guard let self = self, let key = key else { return true }
+                guard let self = self else { return true }
                 Task { @MainActor in await self.prepareProfile(key: key, name: name) }
                 return false
             }
@@ -769,6 +760,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 Task { @MainActor in
                     self.settings.clientConnected = false
                     self.closeActiveProfile()
+                    self.destroyActiveDisplayAndCapture()
                     // Final lastConnected snapshot at the disconnect moment, then
                     // freeze (currentWirelessDevice = nil stops the rolling update
                     // in refreshStatusIndicators).
@@ -800,13 +792,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 )
             }
             try await server.start()
-            startStreaming(to: server)
 
             await MainActor.run {
                 settings.isRunning = true
             }
 
-            print("✅ Server started on port \(settings.port)")
+            print("✅ Server listening on port \(settings.port) (virtual display will be created when tablet connects)")
         } catch {
             print("❌ Failed to start: \(error)")
             await MainActor.run {
@@ -899,43 +890,48 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// without a profile starts from the current settings, i.e. the last
     /// profile used.
     @MainActor
-    private func prepareProfile(key: String, name: String) async {
+    private func prepareProfile(key: String?, name: String) async {
         guard let server = streamingServer else { return }
         defer { server.resumeProtocolStartup() }
 
+        let displayWasCreated = settings.displayCreated && screenCapture != nil
+
         // Flush whatever the current settings belong to (the last tablet, or
         // one that never disconnected cleanly) before they are replaced.
-        virtualDisplayManager?.saveDisplayPosition()
+        if displayWasCreated {
+            virtualDisplayManager?.saveDisplayPosition()
+        }
         syncCurrentProfile()
 
         let current = settings.profileSettings
-        let stored = deviceProfileStore.profile(id: key)
-        let displayName = name.isEmpty ? (stored?.name ?? "Tablet") : name
-        activeProfileKey = key
-        deviceProfileStore.save(DeviceProfile(id: key, name: displayName, lastConnected: Date(), settings: stored?.settings ?? current))
+        var needsRebuild = !displayWasCreated
 
-        guard let target = stored?.settings, target != current else {
-            debugLog("Profile \(displayName): \(stored == nil ? "new tablet, starting from the last profile" : "matches, nothing to apply")")
-            return
+        if let key = key {
+            let stored = deviceProfileStore.profile(id: key)
+            let displayName = name.isEmpty ? (stored?.name ?? "Tablet") : name
+            activeProfileKey = key
+            deviceProfileStore.save(DeviceProfile(id: key, name: displayName, lastConnected: Date(), settings: stored?.settings ?? current))
+
+            if let target = stored?.settings, target != current {
+                isSwitchingProfile = true
+                settings.apply(target)
+                isSwitchingProfile = false
+                if target.displayShape != current.displayShape {
+                    needsRebuild = true
+                } else if displayWasCreated && (target.positionX != current.positionX || target.positionY != current.positionY) {
+                    virtualDisplayManager?.restoreDisplayPosition()
+                }
+            }
         }
 
-        isSwitchingProfile = true
-        defer { isSwitchingProfile = false }
-        settings.apply(target)
-
-        if target.displayShape != current.displayShape {
-            debugLog("Profile \(displayName): rebuilding display for \(target.resolution) @ \(target.refreshRate)Hz")
+        if needsRebuild {
+            debugLog("Creating/rebuilding virtual display on client connect (\(settings.resolution) @ \(settings.effectiveRefreshRate)Hz)")
             lastAppliedRefreshRate = settings.effectiveRefreshRate
             do {
                 try await rebuildDisplay(for: server)
             } catch {
-                debugLog("❌ Profile switch failed: \(error) — stopping server")
+                debugLog("❌ Virtual display creation failed: \(error) — stopping server")
                 stopServer()
-            }
-        } else {
-            debugLog("Profile \(displayName): applied live")
-            if target.positionX != current.positionX || target.positionY != current.positionY {
-                virtualDisplayManager?.restoreDisplayPosition()
             }
         }
     }
@@ -944,11 +940,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// settings while `server` and its client stay up.
     @MainActor
     private func rebuildDisplay(for server: StreamingServer) async throws {
-        guard let manager = virtualDisplayManager else { return }
+        let manager = virtualDisplayManager ?? VirtualDisplayManager()
+        virtualDisplayManager = manager
         screenCapture?.stopStreaming()
         screenCapture = nil
 
         try createVirtualDisplay(on: manager)
+        settings.displayCreated = true
         try? await Task.sleep(nanoseconds: 500_000_000)
         manager.restoreDisplayPosition()
         let capture = try await makeCapture(for: manager)
@@ -956,6 +954,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         screenCapture = capture
         configureDisplayGeometry(on: server, for: manager)
         startStreaming(to: server)
+    }
+
+    @MainActor
+    private func destroyActiveDisplayAndCapture() {
+        guard settings.displayCreated || screenCapture != nil else { return }
+        debugLog("Tablet disconnected — destroying virtual display so windows return to main screen")
+        virtualDisplayManager?.saveDisplayPosition()
+        screenCapture?.stopStreaming()
+        screenCapture = nil
+        virtualDisplayManager?.destroyDisplay()
+        settings.displayCreated = false
+        settings.currentFPS = 0
+        settings.currentBitrate = 0
     }
 
     /// The streaming tablet went away: keep where its display ended up and

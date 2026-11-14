@@ -386,50 +386,38 @@ class StreamingServer {
     private func handleConnection(_ newConnection: NWConnection) {
         debugLog("New connection incoming...")
 
-        // Clean up old connection properly
-        if let oldConnection = connection {
-            isReceiving = false
-            oldConnection.cancel()
-        }
-
-        connectionReady = false
-        clientSupportsFrameMetadata = false
-        clientIsAvcOnly = false
-        clientDecodeLimits = nil
-        clientDecodeLimitTable = nil
-        clientSupportsDesktopGeometry = false
-        clientIdentity = nil
-        handshakeDeviceName = nil
-        startupPrepared = false
-        startupHeld = false
-        waitingForSyncFrame = true
-        inputBuffer.removeAll(keepingCapacity: true)
-        connection = newConnection
-        droppedFrames = 0
-
-        connection?.stateUpdateHandler = { [weak self] state in
+        newConnection.stateUpdateHandler = { [weak self, weak newConnection] state in
+            guard let self = self, let conn = newConnection else { return }
             debugLog("Connection state: \(state)")
             switch state {
             case .ready:
-                self?.onConnectionReady(newConnection)
+                self.onConnectionReady(conn)
             case .failed(let error):
                 debugLog("Connection failed: \(error)")
-                self?.onClientDisconnected?()
+                if self.connection === conn {
+                    self.connection = nil
+                    self.connectionReady = false
+                    self.onClientDisconnected?()
+                }
             case .cancelled:
                 debugLog("Connection cancelled")
-                self?.onClientDisconnected?()
+                if self.connection === conn {
+                    self.connection = nil
+                    self.connectionReady = false
+                    self.onClientDisconnected?()
+                }
             default:
                 break
             }
         }
 
-        connection?.start(queue: networkQueue)
+        newConnection.start(queue: networkQueue)
     }
 
     private func onConnectionReady(_ conn: NWConnection) {
         if conn.endpoint.isLoopback {
             debugLog("Client connected via loopback (USB) — skipping auth")
-            beginExistingProtocol(on: conn)
+            beginExistingProtocol(on: conn, authenticatedDeviceName: nil)
             return
         }
         guard let expected = expectedAuthToken else {
@@ -441,7 +429,32 @@ class StreamingServer {
         runAuthHandshake(connection: conn, expectedToken: expected)
     }
 
-    private func beginExistingProtocol(on conn: NWConnection) {
+    private func beginExistingProtocol(on conn: NWConnection, authenticatedDeviceName: String?) {
+        // Only promote a connection to the active streaming session AFTER it passes
+        // authentication (or loopback USB check), so TCP reachability probes and
+        // one-shot SSPC pairing exchanges never disrupt an active session or trigger
+        // false disconnect events.
+        if let oldConnection = connection, oldConnection !== conn {
+            isReceiving = false
+            connection = nil
+            oldConnection.cancel()
+        }
+
+        connectionReady = false
+        clientSupportsFrameMetadata = false
+        clientIsAvcOnly = false
+        clientDecodeLimits = nil
+        clientDecodeLimitTable = nil
+        clientSupportsDesktopGeometry = false
+        clientIdentity = nil
+        handshakeDeviceName = authenticatedDeviceName
+        startupPrepared = false
+        startupHeld = false
+        waitingForSyncFrame = true
+        inputBuffer.removeAll(keepingCapacity: true)
+        connection = conn
+        droppedFrames = 0
+
         startReceivingTouch()
 
         // Give new clients a short chance to opt in before the first frame.
@@ -519,9 +532,8 @@ class StreamingServer {
                     if WirelessAuth.validate(parsed.token, expected: expectedToken) {
                         debugLog("Wireless auth OK — device: \(parsed.deviceName)")
                         self.sendAuthResponse(conn, status: .ok, thenClose: false)
-                        self.handshakeDeviceName = parsed.deviceName
                         self.onWirelessClientPaired?(parsed.deviceName, conn.endpoint.remoteIPv4String)
-                        self.beginExistingProtocol(on: conn)
+                        self.beginExistingProtocol(on: conn, authenticatedDeviceName: parsed.deviceName)
                     } else {
                         debugLog("Wireless auth rejected: token mismatch")
                         self.sendAuthResponse(conn, status: .invalidToken, thenClose: true)
@@ -722,6 +734,7 @@ class StreamingServer {
             if error != nil || isComplete {
                 self.isReceiving = false
                 self.inputBuffer.removeAll(keepingCapacity: true)
+                connection.cancel()
                 return
             }
 
