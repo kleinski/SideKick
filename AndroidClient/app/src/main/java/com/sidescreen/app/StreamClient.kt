@@ -27,6 +27,7 @@ class StreamClient(
     private var socket: Socket? = null
     private var inputStream: DataInputStream? = null
     private var outputStream: java.io.DataOutputStream? = null
+    private val outputLock = Any()
     private var isConnected = false
 
     // Callback includes actual frame size (may differ from buffer.size due to pooling),
@@ -300,14 +301,14 @@ class StreamClient(
         Log.i(TAG, "connectWireless: trying $host:$port (device=$deviceName, token bytes=${token.size})")
 
         val s = openWirelessSocket()
+        val handshakeReq = WirelessCrypto.encodeEncryptedRequest(token, deviceName)
         Log.i(
             TAG,
-            "connectWireless: TCP connected, sending handshake (${37 + deviceName.toByteArray().size} bytes)",
+            "connectWireless: TCP connected, sending SSWE challenge handshake (${handshakeReq.wireBytes.size} bytes)",
         )
 
-        val request = AuthHandshake.encodeRequest(token, deviceName)
         try {
-            s.getOutputStream().write(request)
+            s.getOutputStream().write(handshakeReq.wireBytes)
             s.getOutputStream().flush()
         } catch (e: IOException) {
             try {
@@ -318,26 +319,12 @@ class StreamClient(
         }
 
         val responseBuf = ByteArray(5)
-        var read = 0
-        try {
-            while (read < 5) {
-                val r = s.getInputStream().read(responseBuf, read, 5 - read)
-                if (r <= 0) break
-                read += r
-            }
-        } catch (e: IOException) {
+        if (!readFully(s, responseBuf)) {
             try {
                 s.close()
             } catch (_: IOException) {
             }
             throw WirelessConnectError.NetworkUnreachable
-        }
-        if (read != 5) {
-            try {
-                s.close()
-            } catch (_: IOException) {
-            }
-            throw WirelessConnectError.ProtocolError
         }
 
         val status =
@@ -350,10 +337,58 @@ class StreamClient(
             }
         Log.i(TAG, "connectWireless: handshake response status=$status")
         when (status) {
-            AuthHandshake.ResponseStatus.OK -> {
+            AuthHandshake.ResponseStatus.OK, AuthHandshake.ResponseStatus.OK_UNENCRYPTED -> {
+                val serverChallenge = ByteArray(WirelessCrypto.NONCE_LEN + WirelessCrypto.PROOF_LEN)
+                if (!readFully(s, serverChallenge)) {
+                    try {
+                        s.close()
+                    } catch (_: IOException) {
+                    }
+                    throw WirelessConnectError.ProtocolError
+                }
+                val serverNonce = serverChallenge.copyOfRange(0, WirelessCrypto.NONCE_LEN)
+                val serverProof =
+                    serverChallenge.copyOfRange(
+                        WirelessCrypto.NONCE_LEN,
+                        WirelessCrypto.NONCE_LEN + WirelessCrypto.PROOF_LEN,
+                    )
+                if (!WirelessCrypto.verifyServerResponse(token, handshakeReq.clientNonce, serverNonce, serverProof)) {
+                    Log.e(TAG, "connectWireless: server HMAC proof verification failed!")
+                    try {
+                        s.close()
+                    } catch (_: IOException) {
+                    }
+                    throw WirelessConnectError.TokenRejected
+                }
+
+                val encryptedStream = (status == AuthHandshake.ResponseStatus.OK)
+                val bufferedRawIn = java.io.BufferedInputStream(s.getInputStream(), 65536)
+                val bufferedRawOut = java.io.BufferedOutputStream(s.getOutputStream(), 4096)
+
                 socket = s
-                inputStream = DataInputStream(java.io.BufferedInputStream(s.getInputStream(), 65536))
-                outputStream = java.io.DataOutputStream(s.getOutputStream())
+                if (encryptedStream) {
+                    inputStream =
+                        DataInputStream(
+                            WirelessCrypto.EncryptedInputStream(
+                                bufferedRawIn,
+                                token,
+                                handshakeReq.clientNonce,
+                                serverNonce,
+                            ),
+                        )
+                    outputStream =
+                        java.io.DataOutputStream(
+                            WirelessCrypto.EncryptedOutputStream(
+                                bufferedRawOut,
+                                token,
+                                handshakeReq.clientNonce,
+                                serverNonce,
+                            ),
+                        )
+                } else {
+                    inputStream = DataInputStream(bufferedRawIn)
+                    outputStream = java.io.DataOutputStream(bufferedRawOut)
+                }
                 streamCodecIsHevc = true
                 codecNegotiated = false
                 prepareAdvertisements()
@@ -363,7 +398,7 @@ class StreamClient(
                 advertiseIdentity() // Likewise: the Mac picks this tablet's profile when type 8 lands
                 advertiseFrameMetadataSupport()
                 isConnected = true
-                diagLog("Wireless connected to $host:$port")
+                diagLog("Wireless connected to $host:$port (encryption=${if (encryptedStream) "AES-256-GCM" else "off"})")
                 onConnectionStatus?.invoke(true)
                 receiveData()
             }
@@ -566,21 +601,23 @@ class StreamClient(
 
         touchScope.launch {
             try {
-                socket?.getOutputStream()?.let { out ->
-                    val count = pointerCount.coerceIn(1, 2)
-                    val size = 6 + count * 8 // 1 type + 1 count + N*(4x+4y) + 4 action
-                    val buffer = ByteBuffer.allocate(size).order(ByteOrder.LITTLE_ENDIAN)
-                    buffer.put(2.toByte())
-                    buffer.put(count.toByte())
-                    buffer.putFloat(x)
-                    buffer.putFloat(y)
-                    if (count == 2) {
-                        buffer.putFloat(x2)
-                        buffer.putFloat(y2)
+                val count = pointerCount.coerceIn(1, 2)
+                val size = 6 + count * 8 // 1 type + 1 count + N*(4x+4y) + 4 action
+                val buffer = ByteBuffer.allocate(size).order(ByteOrder.LITTLE_ENDIAN)
+                buffer.put(2.toByte())
+                buffer.put(count.toByte())
+                buffer.putFloat(x)
+                buffer.putFloat(y)
+                if (count == 2) {
+                    buffer.putFloat(x2)
+                    buffer.putFloat(y2)
+                }
+                buffer.putInt(action)
+                synchronized(outputLock) {
+                    outputStream?.let { out ->
+                        out.write(buffer.array())
+                        out.flush()
                     }
-                    buffer.putInt(action)
-                    out.write(buffer.array())
-                    out.flush()
                 }
             } catch (_: Exception) {
             }
@@ -622,9 +659,11 @@ class StreamClient(
         diagLog("Requesting keyframe: reason=$reason, force=$force")
         touchScope.launch {
             try {
-                outputStream?.let { out ->
-                    out.write(byteArrayOf(MESSAGE_KEYFRAME_REQUEST.toByte(), flags.toByte()))
-                    out.flush()
+                synchronized(outputLock) {
+                    outputStream?.let { out ->
+                        out.write(byteArrayOf(MESSAGE_KEYFRAME_REQUEST.toByte(), flags.toByte()))
+                        out.flush()
+                    }
                 }
             } catch (_: Exception) {
             }
@@ -632,18 +671,20 @@ class StreamClient(
     }
 
     /**
-     * Send a ping to measure round-trip latency through the USB connection
+     * Send a ping to measure round-trip latency through the connection
      */
     fun sendPing() {
         if (!isConnected) return
         touchScope.launch {
             try {
-                socket?.getOutputStream()?.let { out ->
-                    val buffer = ByteBuffer.allocate(9).order(ByteOrder.LITTLE_ENDIAN)
-                    buffer.put(4.toByte()) // Type 4: ping
-                    buffer.putLong(System.nanoTime())
-                    out.write(buffer.array())
-                    out.flush()
+                val buffer = ByteBuffer.allocate(9).order(ByteOrder.LITTLE_ENDIAN)
+                buffer.put(4.toByte()) // Type 4: ping
+                buffer.putLong(System.nanoTime())
+                synchronized(outputLock) {
+                    outputStream?.let { out ->
+                        out.write(buffer.array())
+                        out.flush()
+                    }
                 }
             } catch (_: Exception) {
             }

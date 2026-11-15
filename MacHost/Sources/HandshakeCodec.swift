@@ -11,6 +11,7 @@ enum HandshakeStatus: UInt8 {
     case invalidToken = 0x01
     case invalidMagic = 0x02
     case invalidName = 0x03
+    case okUnencrypted = 0x04
 }
 
 struct ParsedHandshake {

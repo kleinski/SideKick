@@ -353,6 +353,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
             .store(in: &cancellables)
 
+        settings.$wirelessEncryption
+            .dropFirst()
+            .removeDuplicates()
+            .sink { [weak self] enabled in
+                guard let self = self else { return }
+                self.streamingServer?.wirelessEncryptionEnabled = enabled
+                debugLog("Wireless encryption toggled to \(enabled ? "AES-256-GCM" : "off")")
+                if self.settings.isRunning && self.settings.clientConnected && self.settings.connectionMode == .wireless {
+                    self.streamingServer?.disconnectCurrentClient()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(250)) {
+                        self.requestTabletTakeover()
+                    }
+                }
+            }
+            .store(in: &cancellables)
+
         // Refresh rate shapes the virtual display mode AND the capture
         // interval, so it needs the same rebuild as a resolution change.
         // Debounced: the custom-FPS slider (issue #41) emits continuously
@@ -786,6 +802,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             // Setup server
             streamingServer = StreamingServer(port: settings.port)
             streamingServer?.touchEnabled = settings.touchEnabled
+            streamingServer?.wirelessEncryptionEnabled = settings.wirelessEncryption
             if settings.connectionMode == .wireless {
                 streamingServer?.expectedAuthToken = WirelessAuth.loadOrCreate()
                 streamingServer?.bonjourHostId = WirelessAuth.loadOrCreateHostId()

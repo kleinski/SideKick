@@ -453,9 +453,36 @@ struct SettingsView: View {
             }
         }
 
-        // Network Settings (Server Port)
-        FrostedGroupBox(title: "Network Settings", icon: "network") {
-            VStack(alignment: .leading, spacing: 8) {
+        // Network & Security Settings (Server Port + Wireless Encryption)
+        FrostedGroupBox(title: "Network & Security", icon: "lock.shield") {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 5) {
+                            Text("End-to-End Encryption (AES-256-GCM)")
+                                .font(.system(size: 11, weight: .medium))
+                            Text(settings.wirelessEncryption ? "Active" : "Off")
+                                .font(.system(size: 9, weight: .semibold))
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 1)
+                                .background(
+                                    Capsule().fill(settings.wirelessEncryption ? Color.green.opacity(0.18) : Color.secondary.opacity(0.15))
+                                )
+                                .foregroundColor(settings.wirelessEncryption ? .green : .secondary)
+                        }
+                        Text("Encrypts wireless video & touch streams and authenticates handshakes via HMAC-SHA256 so nothing can be sniffed on shared Wi‑Fi.")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer()
+                    Toggle("", isOn: $settings.wirelessEncryption)
+                        .toggleStyle(.switch)
+                        .controlSize(.mini)
+                }
+
+                Divider()
+
                 HStack {
                     Text("Server Port")
                         .font(.system(size: 11))
@@ -1567,6 +1594,9 @@ class DisplaySettings: ObservableObject {
     @Published var startupMode: ConnectionMode {
         didSet { save("startupMode", startupMode.rawValue) }
     }
+    @Published var wirelessEncryption: Bool {
+        didSet { save("wirelessEncryption", wirelessEncryption) }
+    }
 
     // Runtime state (not persisted)
     @Published var displayCreated = false
@@ -1621,6 +1651,7 @@ class DisplaySettings: ObservableObject {
         self.autoStartStreamingOnLaunch = defaults.object(forKey: keyPrefix + "autoStartStreamingOnLaunch") as? Bool ?? false
         let startupRaw = defaults.string(forKey: keyPrefix + "startupMode") ?? modeRaw
         self.startupMode = ConnectionMode(rawValue: startupRaw) ?? .usb
+        self.wirelessEncryption = defaults.object(forKey: keyPrefix + "wirelessEncryption") as? Bool ?? true
 
         print("Loaded settings: \(resolution) @ \(refreshRate)Hz, bitrate=\(bitrate), quality=\(quality)")
     }
@@ -1734,7 +1765,8 @@ class DisplaySettings: ObservableObject {
     func resetToDefaults() {
         let keys = ["resolution", "refreshRate", "hiDPI", "bitrate", "quality",
                     "gamingBoost", "port", "rotation", "flipHorizontal", "flipVertical", "showAllResolutions",
-                    "customWidth", "customHeight", "touchEnabled", "autoStartStreamingOnLaunch", "startupMode"]
+                    "customWidth", "customHeight", "touchEnabled", "autoStartStreamingOnLaunch", "startupMode",
+                    "wirelessEncryption"]
         for key in keys {
             defaults.removeObject(forKey: keyPrefix + key)
         }
@@ -1755,6 +1787,7 @@ class DisplaySettings: ObservableObject {
         touchEnabled = true
         autoStartStreamingOnLaunch = false
         startupMode = .usb
+        wirelessEncryption = true
 
         print("Settings reset to defaults")
     }

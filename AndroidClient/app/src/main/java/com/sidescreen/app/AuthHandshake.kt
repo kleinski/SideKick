@@ -18,6 +18,7 @@ object AuthHandshake {
         INVALID_TOKEN(0x01),
         INVALID_MAGIC(0x02),
         INVALID_NAME(0x03),
+        OK_UNENCRYPTED(0x04),
         ;
 
         companion object {

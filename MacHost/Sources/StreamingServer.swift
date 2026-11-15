@@ -196,6 +196,9 @@ class StreamingServer {
     // 32-byte token before being allowed to proceed. nil means wireless mode
     // is inactive — non-loopback connections are rejected immediately.
     var expectedAuthToken: Data?
+    /// Whether wireless connections encrypt post-handshake video & touch traffic with AES-256-GCM.
+    /// Defaults to true. Even when false, the SSWE challenge-response handshake never sends the raw token.
+    var wirelessEncryptionEnabled: Bool = true
     var bonjourHostId: String?
     var onWirelessClientPaired: ((_ deviceName: String, _ clientAddress: String?) -> Void)?
 
@@ -280,6 +283,10 @@ class StreamingServer {
     private var desktopWidth = 0
     private var desktopHeight = 0
     private var inputBuffer = Data()
+    /// Active AES-256-GCM session cipher when connected via encrypted wireless ("SSWE").
+    private var sessionCipher: WirelessCrypto.SessionCipher?
+    /// Serializes post-handshake encryption sequence numbering with NWConnection.send enqueueing.
+    private let sendLock = NSLock()
 
     init(port: UInt16) {
         self.port = port
@@ -429,7 +436,11 @@ class StreamingServer {
         runAuthHandshake(connection: conn, expectedToken: expected)
     }
 
-    private func beginExistingProtocol(on conn: NWConnection, authenticatedDeviceName: String?) {
+    private func beginExistingProtocol(
+        on conn: NWConnection,
+        authenticatedDeviceName: String?,
+        cipher: WirelessCrypto.SessionCipher? = nil
+    ) {
         // Only promote a connection to the active streaming session AFTER it passes
         // authentication (or loopback USB check), so TCP reachability probes and
         // one-shot SSPC pairing exchanges never disrupt an active session or trigger
@@ -439,6 +450,10 @@ class StreamingServer {
             connection = nil
             oldConnection.cancel()
         }
+
+        sendLock.lock()
+        sessionCipher = cipher
+        sendLock.unlock()
 
         connectionReady = false
         clientSupportsFrameMetadata = false
@@ -466,6 +481,27 @@ class StreamingServer {
         }
     }
 
+    private func sendPayload(on conn: NWConnection, _ plaintext: Data, completion: ((NWError?) -> Void)? = nil) {
+        sendLock.lock()
+        let wireData: Data
+        if conn === connection, let cipher = sessionCipher {
+            do {
+                wireData = try cipher.seal(plaintext)
+            } catch {
+                sendLock.unlock()
+                debugLog("Wireless AES-GCM seal error: \(error)")
+                conn.cancel()
+                return
+            }
+        } else {
+            wireData = plaintext
+        }
+        conn.send(content: wireData, completion: .contentProcessed { error in
+            completion?(error)
+        })
+        sendLock.unlock()
+    }
+
     private func finishProtocolStartup(on conn: NWConnection) {
         guard connection === conn, !isStopped, !connectionReady, !startupHeld else { return }
 
@@ -486,7 +522,7 @@ class StreamingServer {
             // display config so the client knows the codec before it sizes
             // and configures its decoder.
             let msg = Data([WireMessage.codecSelected, codec.wireId])
-            conn.send(content: msg, completion: .contentProcessed { _ in })
+            sendPayload(on: conn, msg)
             debugLog("Sent codecSelected: H.264")
         }
         // Synchronous, before sendDisplaySize(): the handler switches the
@@ -502,7 +538,7 @@ class StreamingServer {
     }
 
     private func runAuthHandshake(connection conn: NWConnection, expectedToken: Data) {
-        // Read fixed prefix [magic 4][token 32][name_len 1] = 37 bytes.
+        // Read fixed prefix [magic 4][token/challenge 32][name_len 1] = 37 bytes.
         conn.receive(minimumIncompleteLength: HandshakeCodec.fixedPrefixLen,
                      maximumLength: HandshakeCodec.fixedPrefixLen) { [weak self] prefixData, _, _, error in
             guard let self = self else { return }
@@ -520,6 +556,48 @@ class StreamingServer {
                 self.runPairingExchange(connection: conn, prefix: prefix)
                 return
             }
+            if Array(prefixBytes[0..<4]) == WirelessCrypto.encryptedRequestMagic {
+                self.receiveNameSuffix(on: conn, prefix: prefix, onInvalid: {
+                    self.sendAuthResponse(conn, status: .invalidName, thenClose: true)
+                }) { full in
+                    do {
+                        let parsed = try WirelessCrypto.parseEncryptedRequest(full)
+                        if WirelessCrypto.verifyClientHandshake(parsed, expectedToken: expectedToken) {
+                            let serverNonce = WirelessCrypto.randomNonce()
+                            let encryptStream = self.wirelessEncryptionEnabled
+                            let cipher: WirelessCrypto.SessionCipher? = encryptStream
+                                ? WirelessCrypto.SessionCipher(
+                                    token: expectedToken,
+                                    clientNonce: parsed.clientNonce,
+                                    serverNonce: serverNonce
+                                )
+                                : nil
+                            let reply = WirelessCrypto.encodeEncryptedSuccessResponse(
+                                token: expectedToken,
+                                clientNonce: parsed.clientNonce,
+                                serverNonce: serverNonce,
+                                encryptedStream: encryptStream
+                            )
+                            debugLog("Wireless auth (SSWE, encryption=\(encryptStream ? "AES-256-GCM" : "off")) OK — device: \(parsed.deviceName)")
+                            conn.send(content: reply, completion: .contentProcessed { _ in })
+                            self.onWirelessClientPaired?(parsed.deviceName, conn.endpoint.remoteIPv4String)
+                            self.beginExistingProtocol(
+                                on: conn,
+                                authenticatedDeviceName: parsed.deviceName,
+                                cipher: cipher
+                            )
+                        } else {
+                            debugLog("Wireless encrypted auth rejected: HMAC proof mismatch")
+                            self.sendAuthResponse(conn, status: .invalidToken, thenClose: true)
+                        }
+                    } catch HandshakeError.invalidName {
+                        self.sendAuthResponse(conn, status: .invalidName, thenClose: true)
+                    } catch {
+                        self.sendAuthResponse(conn, status: .invalidMagic, thenClose: true)
+                    }
+                }
+                return
+            }
             guard Array(prefixBytes[0..<4]) == HandshakeCodec.requestMagic else {
                 self.sendAuthResponse(conn, status: .invalidMagic, thenClose: true)
                 return
@@ -530,7 +608,7 @@ class StreamingServer {
                 do {
                     let parsed = try HandshakeCodec.parseRequest(full)
                     if WirelessAuth.validate(parsed.token, expected: expectedToken) {
-                        debugLog("Wireless auth OK — device: \(parsed.deviceName)")
+                        debugLog("Wireless legacy auth (SSWA) OK — device: \(parsed.deviceName)")
                         self.sendAuthResponse(conn, status: .ok, thenClose: false)
                         self.onWirelessClientPaired?(parsed.deviceName, conn.endpoint.remoteIPv4String)
                         self.beginExistingProtocol(on: conn, authenticatedDeviceName: parsed.deviceName)
@@ -705,7 +783,7 @@ class StreamingServer {
         data.append(contentsOf: withUnsafeBytes(of: Int32(displayHeight).bigEndian) { Data($0) })
         data.append(contentsOf: withUnsafeBytes(of: Int32(transform).bigEndian) { Data($0) })
 
-        connection.send(content: data, completion: .contentProcessed { _ in })
+        sendPayload(on: connection, data)
         debugLog("Sent display config: \(displayWidth)x\(displayHeight) @ \(rotation)°, h=\(flipHorizontal), v=\(flipVertical)")
         sendDesktopGeometry()
     }
@@ -719,7 +797,7 @@ class StreamingServer {
         data.append(WireMessage.desktopGeometry)
         data.append(contentsOf: withUnsafeBytes(of: Int32(desktopWidth).bigEndian) { Data($0) })
         data.append(contentsOf: withUnsafeBytes(of: Int32(desktopHeight).bigEndian) { Data($0) })
-        connection.send(content: data, completion: .contentProcessed { _ in })
+        sendPayload(on: connection, data)
         debugLog("Sent desktop geometry: \(desktopWidth)x\(desktopHeight)")
     }
 
@@ -743,7 +821,7 @@ class StreamingServer {
             return
         }
 
-        connection.receive(minimumIncompleteLength: 1, maximumLength: 256) { [weak self] data, _, isComplete, error in
+        connection.receive(minimumIncompleteLength: 1, maximumLength: 4096) { [weak self] data, _, isComplete, error in
             guard let self = self, self.isReceiving, !self.isStopped else { return }
 
             if error != nil || isComplete {
@@ -754,8 +832,24 @@ class StreamingServer {
             }
 
             if let data = data, !data.isEmpty {
-                self.inputBuffer.append(data)
-                self.processInputBuffer(connection: connection)
+                if let cipher = self.sessionCipher {
+                    do {
+                        let plaintext = try cipher.openStreamChunk(data)
+                        if !plaintext.isEmpty {
+                            self.inputBuffer.append(plaintext)
+                            self.processInputBuffer(connection: connection)
+                        }
+                    } catch {
+                        debugLog("Wireless AES-GCM decrypt error: \(error) — closing connection")
+                        self.isReceiving = false
+                        self.inputBuffer.removeAll(keepingCapacity: true)
+                        connection.cancel()
+                        return
+                    }
+                } else {
+                    self.inputBuffer.append(data)
+                    self.processInputBuffer(connection: connection)
+                }
             }
 
             self.receiveQueue.async {
@@ -801,7 +895,7 @@ class StreamingServer {
                 var pong = Data(capacity: 9)
                 pong.append(WireMessage.pong) // Type: Pong
                 pong.append(clientTimestamp)
-                connection.send(content: pong, completion: .contentProcessed { _ in })
+                sendPayload(on: connection, pong)
 
             case WireMessage.keyframeRequest:
                 // Keyframe request from Android decoder. The client sends a
@@ -1014,11 +1108,11 @@ class StreamingServer {
 
             let packet = self.makeFramePacket(data, timestamp: timestamp, isKeyframe: isKeyframe)
 
-            connection.send(content: packet, completion: .contentProcessed { error in
+            self.sendPayload(on: connection, packet) { error in
                 if error != nil {
                     self.droppedFrames += 1
                 }
-            })
+            }
 
             // Track frame age at send time for pipeline profiling
             let sendAge = DispatchTime.now().uptimeNanoseconds - timestamp
@@ -1096,6 +1190,9 @@ class StreamingServer {
             self.isReceiving = false
             self.connectionReady = false
             self.startupHeld = false
+            self.sendLock.lock()
+            self.sessionCipher = nil
+            self.sendLock.unlock()
             self.connection = nil
             conn.cancel()
             self.onClientDisconnected?()
@@ -1109,6 +1206,10 @@ class StreamingServer {
         // Wait for pending operations before cancelling
         frameQueue.sync {}
         receiveQueue.sync {}
+
+        sendLock.lock()
+        sessionCipher = nil
+        sendLock.unlock()
 
         connection?.cancel()
         listener?.cancel()
