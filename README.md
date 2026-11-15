@@ -6,11 +6,14 @@
 
 <h1>SideKick</h1>
 
-<p><em>Turn your Android tablet into a second display for multiple MacBooks — USB-C or wireless over WiFi with instant Multi-Mac Takeover</em></p>
+<p><em>Turn your Android tablet into a true second display across multiple MacBooks — USB-C or wireless over WiFi with instant Multi-Mac Takeover</em></p>
 
 <p>
+  <a href="https://github.com/kleinski/SideKick/releases">
+    <img src="https://img.shields.io/github/v/release/kleinski/SideKick?style=for-the-badge&color=007AFF" alt="Latest Release">
+  </a>
   <a href="https://github.com/kleinski/SideKick/blob/main/LICENSE">
-    <img src="https://img.shields.io/github/license/tranvuongquocdat/SideScreen?style=for-the-badge&color=34C759" alt="License">
+    <img src="https://img.shields.io/github/license/kleinski/SideKick?style=for-the-badge&color=34C759" alt="License">
   </a>
 </p>
 
@@ -24,60 +27,66 @@
 
 ---
 
-## SideKick — Standalone Multi-Mac Fork of SideScreen
+## Origin & Attribution: Original `SideScreen` vs. `SideKick`
 
-**SideKick** (`https://github.com/kleinski/SideKick`) is an independent fork of [tranvuongquocdat/SideScreen](https://github.com/tranvuongquocdat/SideScreen), engineered for seamless wireless operation of a single Android tablet across **multiple MacBooks**:
+**SideKick** is an independent fork of [**SideScreen**](https://github.com/tranvuongquocdat/SideScreen) (originally created by [**Tran Vuong Quoc Dat**](https://github.com/tranvuongquocdat) — [sidescreen.dev](https://sidescreen.dev)).
 
-- **Multi-Mac Wireless Pairing & Bonjour Discovery (`_sidescreen._tcp`):** Pair once per MacBook — the Android client stores multiple paired Macs persistently, automatically updates their IP addresses via mDNS/Bonjour, and smart-connects on launch when a single paired MacBook is online (or presents a pre-selected Mac picker when multiple paired Macs are online simultaneously).
-- **Two-Way Instant Takeover (`⌘⇧T`):** Switch the active tablet stream between MacBooks at any time with a single action — either initiated from the Mac (Menu Bar, Settings Footer, `⌘⇧T` shortcut, or URL scheme via HMAC-SHA256 signed UDP handover on port `54322`) or directly from the tablet's in-stream settings dialog.
-- **On-Demand Virtual Display & Disconnect Tablet (`⌘⇧D`):** The macOS virtual display is created strictly on demand when a tablet connects and is immediately destroyed when it disconnects — preventing macOS windows from ever getting stranded on an unseen second desktop. Use **Disconnect Tablet** (`⌘⇧D`) to drop the active tablet session while keeping the server listening in standby.
-- **Live Resolution, HiDPI & Refresh Rate Switching:** Changing resolution, Retina/HiDPI mode, or refresh rate rebuilds the virtual display and capture pipeline in-place without dropping the active tablet connection.
-- **4-Tab Settings UI & Background Menu Bar Mode:** Cleanly organized into *Connection*, *Display & Touch*, *Stream & Quality*, and *System & Status*. Closing the Settings window (`×` or `⌘W`) keeps SideKick running quietly in the macOS menu bar.
-- **Persistent Local Code Signing & Automatic TCC Reset:** Supports a local code-signing certificate (`./scripts/setup_signing_cert.sh` -> `"SideKick Local Signing"`) and automatic `tccutil reset` on binary changes so macOS *Screen Recording* and *Accessibility* permissions persist cleanly across updates.
-- **URL Scheme, CLI & Launcher Integration:**
+While the original **SideScreen** provides an outstanding ultra-low-latency H.265 streaming engine for connecting an Android tablet to a single Mac, **SideKick** extends and re-engineers the macOS host and Android client for **seamless wireless multi-Mac workflows** — allowing you to move one Android tablet effortlessly between two or more MacBooks.
+
+### Comparison: What's from Original `SideScreen` vs. What's New in `SideKick`
+
+| Capability | Original `SideScreen` (Upstream) | `SideKick` Fork (Our Additions) |
+|---|---|---|
+| **Core Streaming Engine** | Hardware-accelerated H.265 (`VideoToolbox` → `MediaCodec`), sub-16ms USB / <30ms WiFi latency | Inherited from upstream |
+| **Virtual Display & Input** | Native macOS `CGVirtualDisplay`, HiDPI (Retina 2×), 30–120 FPS, Gaming Boost, Touch Prediction | Inherited from upstream |
+| **Headless Mac Support** | Launch at Login & Auto-start streaming (v0.11.0) | Inherited from upstream |
+| **Wireless Pairing** | Single paired Mac (scanning a second Mac overwrites the first) | **Multi-Mac Pairing:** Pair once per MacBook; Android stores all paired Macs persistently |
+| **IP Address Changes** | Requires re-scanning the QR code if the Mac's LAN IP changes | **Automatic Bonjour / mDNS (`_sidescreen._tcp`):** Dynamically discovers paired Macs and updates their IP addresses |
+| **Smart Startup on Android** | Auto-reconnects to the single saved IP | **Smart Multi-Mac Connect:** Auto-connects if 1 paired Mac is online; opens a pre-filtered Mac picker if multiple paired Macs are online |
+| **Switching Between Macs** | Manual disconnect + re-pair or manual IP swap | **Two-Way Instant Takeover (`⌘⇧T`):** Pull the tablet to your current Mac via HMAC-SHA256 UDP handover (`54322`) or switch Macs directly from the Android in-stream dialog |
+| **Virtual Display Lifecycle** | Created when the streaming server starts | **Strictly On-Demand + Disconnect Tablet (`⌘⇧D`):** Display is created only when a tablet connects and destroyed immediately on disconnect so windows never get lost on an unseen monitor |
+| **Resolution / HiDPI Changes** | Rebuilds server and drops active tablet connection | **Live Display Rebuild:** Switching resolution, HiDPI, or refresh rate updates the virtual display in-place while keeping the tablet connected |
+| **macOS Settings UI** | Single scrolling settings window | **4-Tab Settings UI:** Organized into *Connection*, *Display & Touch*, *Stream & Quality*, and *System & Status*, plus background menu-bar mode on window close |
+| **macOS TCC Permissions** | Signed with upstream developer ID; manual TCC handling on custom builds | **Persistent Local Signing & TCC Reset:** Includes `./scripts/setup_signing_cert.sh` (`"SideKick Local Signing"`), automatic TCC reset on binary changes, and one-click reset in Settings |
+| **Automation & Launcher** | GUI only | **URL Scheme, CLI & Vorssaint Integration:** Control via `sidekick://takeover`, `sidekick://disconnect`, `sidekick://toggle`, CLI flags, and automatic Vorssaint Quick Links |
+| **App Identity & Updates** | `SideScreen.app` (`com.sidescreen.app`) with Sparkle & Play Store auto-update | **`SideKick.app` (`com.sidekick.app`):** Separate bundle/app ID with upstream auto-updaters disabled so custom builds are never overwritten |
+
+---
+
+## SideKick Highlights (Added in This Fork)
+
+- **Multi-Mac Wireless Pairing & Bonjour Discovery (`_sidescreen._tcp`):** Pair once per MacBook via QR code. The Android app stores every paired MacBook persistently, discovers which Macs are currently online via mDNS/Bonjour, and automatically tracks changing DHCP IP addresses.
+- **Two-Way Instant Takeover (`⌘⇧T`):** Switch the active tablet stream between MacBooks at any time:
+  - **From Mac:** Click **Take Over Tablet** in the menu bar / Settings footer or press `⌘⇧T` (sends an HMAC-SHA256 authenticated UDP broadcast on port `54322`).
+  - **From Android:** Open the in-stream settings overlay (`⚙`) while streaming and tap another paired MacBook to switch immediately.
+- **On-Demand Virtual Display & Disconnect Tablet (`⌘⇧D`):** The macOS virtual display is only active while a tablet is actually streaming. Use **Disconnect Tablet** (`⌘⇧D`) to end the tablet session and remove the virtual display while keeping the Mac server listening in standby.
+- **Live Resolution, HiDPI & Refresh Rate Switching:** Change resolution, Retina/HiDPI mode, or frame rate on the fly — the Mac rebuilds the virtual display and notifies the Android decoder without dropping your session.
+- **URL Scheme, CLI & Vorssaint Command Bar Integration:**
   - **URL Scheme:** `sidekick://takeover`, `sidekick://disconnect`, `sidekick://toggle`, `sidekick://start`, `sidekick://stop`, `sidekick://settings`
   - **CLI Flags:** `/Applications/SideKick.app/Contents/MacOS/SideScreen --takeover` (or `--disconnect`, `--toggle`, `--start`, `--stop`, `--settings`)
-  - **Vorssaint Command Bar:** Automatically registers Quick Links on first launch when `/Applications/Vorssaint.app` is installed (and can be triggered manually under *Settings → System & Status → Maintenance & Integrations*).
-- **Dedicated App Identity:** Uses `SideKick.app` (`com.sidekick.app` on both macOS and Android) with upstream auto-updaters (Sparkle / Google Play) disabled so custom builds are never overwritten.
+  - **Vorssaint Integration:** Automatically registers Quick Links when `/Applications/Vorssaint.app` is present (or re-register any time under *Settings → System & Status → Maintenance & Integrations*).
 
 ---
 
 <div align="center">
-  <img src="resources/screenshots/hero_screenshot.jpeg" alt="Side Screen — Mac + Android tablet as second display" width="800"/>
+  <img src="resources/screenshots/hero_screenshot.jpeg" alt="SideKick — Mac + Android tablet as second display" width="800"/>
 </div>
 
 ---
 
-## About
-
-Side Screen brings true second-display functionality to your Android tablet — over USB-C cable for the lowest latency, or wirelessly over WiFi after a one-time QR pair. Something macOS doesn't natively support either way.
-
-While Apple's Sidecar only works with iPads, millions of Android tablets sit unused as potential workstations. Side Screen bridges that gap with hardware-accelerated H.265 streaming, sub-16ms pipeline latency on USB, and full touch input — making your tablet feel like a real monitor, not a laggy mirror.
-
-Built entirely open-source, Side Screen is designed to be fast, lightweight, and seamlessly integrated.
-
-For full details, features, and documentation, please visit **[sidescreen.dev](https://sidescreen.dev)**
-
-<p align="right"><a href="#readme-top">↑ Back to top</a></p>
-
----
-
-## Features
+## Core Features (from Original `SideScreen`)
 
 ### USB-C or Wireless
-
-Two ways to connect, same picture quality. **USB-C** plugs in the cable for the lowest possible latency — adb-reverse port forwarding is set up automatically. **Wireless** lets you scan a QR code from the Mac once and the tablet auto-reconnects on every future launch over WiFi (5 GHz strongly recommended). The auth token is generated locally and stays on your Mac; reset it any time to revoke access.
+Two ways to connect, same picture quality. **USB-C** plugs in the cable for the lowest possible latency — `adb reverse` port forwarding is set up automatically. **Wireless** lets you scan a QR code from the Mac once and connect over WiFi (5 GHz strongly recommended). The auth token is generated locally and stays on your Mac; reset it any time to revoke access.
 
 ### Virtual Display
-
-Create a true virtual display on your Mac. Drag windows to your tablet like a real monitor — not mirroring, but extending.
+Creates a true hardware-backed virtual display on your Mac. Drag windows to your tablet like a real monitor — extending your desktop rather than mirroring.
 
 <div align="center">
   <img src="resources/screenshots/feature_virtual_display.png" alt="Virtual Display in macOS Display Preferences" width="600"/>
 </div>
 
 ### Ultra-Low Latency
-
 Hardware-accelerated H.265 encoding on Mac and decoding on Android. Async pipeline architecture delivers frames in under 30ms.
 
 <div align="center">
@@ -85,32 +94,16 @@ Hardware-accelerated H.265 encoding on Mac and decoding on Android. Async pipeli
 </div>
 
 ### Touch Support
-
 Use your tablet's touchscreen to interact with macOS. Touch prediction compensates for network latency, making taps and drags feel natural.
 
 ### HiDPI (Retina) Support
-
-Enable HiDPI mode to render at 2× resolution internally — text and icons are sharp at any logical resolution, just like a MacBook Retina display. Perfect for users with 2K/4K tablets who want a readable workspace without sacrificing sharpness.
+Enable HiDPI mode to render at 2× resolution internally — text and icons are sharp at any logical resolution, just like a MacBook Retina display. Perfect for 2K/4K tablets.
 
 ### Gaming Mode
-
 Enable Gaming Boost for optimized settings: 1 Gbps bitrate, ultra-low latency encoding, 120 FPS.
 
-### Customizable
-
-Configure resolution (up to 4K/8K), frame rate (30–120 FPS), bitrate (20–5000 Mbps), and quality presets from the Mac app.
-
-<div align="center">
-  <img src="resources/screenshots/mac_settings_1.png" alt="macOS Settings — Display & FPS" height="500"/>
-  &nbsp;&nbsp;
-  <img src="resources/screenshots/mac_settings_2.png" alt="macOS Settings — Streaming & Status" height="500"/>
-  &nbsp;&nbsp;
-  <img src="resources/screenshots/android_settings.png" alt="Android — Connection Screen" height="500"/>
-</div>
-
-### Headless / portable Mac (new in 0.11.0)
-
-Run a Mac with no display of its own — a Mac Studio or Mini on the go, or a laptop in clamshell — using the tablet as its only screen. Enable Launch at Login and Auto-start streaming, and the Mac boots straight into serving the tablet, with nothing to press on the Mac.
+### Headless / Portable Mac
+Run a Mac with no display of its own — a Mac Studio or Mini on the go, or a laptop in clamshell — using the tablet as its only screen. Enable **Launch at Login** and **Auto-start streaming on launch** under *Settings → Connection*, and the Mac boots straight into standby for your tablet.
 
 <p align="right"><a href="#readme-top">↑ Back to top</a></p>
 
@@ -122,40 +115,57 @@ Run a Mac with no display of its own — a Mac Studio or Mini on the go, or a la
 |---|---|---|
 | **OS** | macOS 13 (Ventura)+ | Android 8.0 (API 26)+ |
 | **Hardware** | Apple Silicon or Intel | H.265 hardware decoder |
-| **USB mode** | USB-C port + `adb` (`brew install android-platform-tools`) | USB-C cable + USB Debugging enabled |
+| **USB mode** | USB-C port + `adb` (`brew install --cask android-platform-tools`) | USB-C cable + USB Debugging enabled |
 | **Wireless mode** | Same WiFi network as the tablet (5 GHz recommended) | Camera (for QR scan) + Google Play Services (for ML Kit barcode) |
 
 ---
 
 ## Installation
 
-- **Android**: [Get it on Google Play](https://play.google.com/store/apps/details?id=com.sidescreen.app) — updates install automatically.
-- **macOS**: Download the `.dmg` from [**GitHub Releases**](https://github.com/tranvuongquocdat/SideScreen/releases), open it, drag Side Screen to Applications. The app is signed and notarized by Apple, and checks for updates on its own. Port forwarding over USB is handled automatically by the Mac app.
+### Download from SideKick GitHub Releases
 
-> **⚠️ ADB Required**
-> The Mac app needs `adb` to communicate with your Android device. If the app doesn't show "Running" after launch, you likely need to install ADB:
->
-> 1. Install Homebrew (if you don't have it):
->    ```bash
->    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
->    ```
-> 2. Install ADB:
->    ```bash
->    brew install --cask android-platform-tools
->    ```
+Download the latest **SideKick** builds from [**GitHub Releases (`kleinski/SideKick`)**](https://github.com/kleinski/SideKick/releases):
+
+- **macOS (`SideKick-<version>-mac-universal.dmg`):**
+  1. Download the `.dmg`, open it, and drag **SideKick.app** to `/Applications`.
+  2. Since SideKick is built as an independent open-source fork without an Apple Developer ID notarization certificate, clear the quarantine attribute before first launch if macOS Gatekeeper prompts you:
+     ```bash
+     xattr -cr /Applications/SideKick.app
+     ```
+- **Android (`SideKick-<version>-android-release.apk`):**
+  - Download and install the `.apk` directly on your Android tablet, or install via ADB:
+    ```bash
+    adb install -r SideKick-1.2.2-android-release.apk
+    ```
+  - Because SideKick uses the package ID `com.sidekick.app`, it can be installed alongside the original Google Play `SideScreen` app without conflict.
+
+> **Looking for the original single-Mac version?**
+> The upstream project by Tran Vuong Quoc Dat is available on [Google Play](https://play.google.com/store/apps/details?id=com.sidescreen.app) and [tranvuongquocdat/SideScreen Releases](https://github.com/tranvuongquocdat/SideScreen/releases).
+
+> **⚠️ ADB Required for USB Mode**
+> For wired USB-C connections, the Mac app needs `adb` to set up port forwarding:
+> ```bash
+> brew install --cask android-platform-tools
+> ```
 
 <details>
-<summary><strong>Build from source (for developers)</strong></summary>
+<summary><strong>Build from source & persistent local code signing (recommended for macOS updates)</strong></summary>
 
 ```bash
-git clone https://github.com/tranvuongquocdat/SideScreen.git
-cd SideScreen
+git clone https://github.com/kleinski/SideKick.git
+cd SideKick
 
-# macOS
-cd MacHost && swift build -c release
+# 1. Optional (once per Mac): create a persistent local code-signing certificate
+#    so macOS remembers Screen Recording & Accessibility permissions across updates
+./scripts/setup_signing_cert.sh
 
-# Android
-cd AndroidClient && ./gradlew assembleDebug
+# 2. Build & install macOS app (/Applications/SideKick.app + universal .dmg)
+./scripts/build_mac.sh
+./scripts/install_mac.sh
+
+# 3. Build & install Android APK
+./scripts/build_android.sh
+./scripts/install_android.sh
 ```
 </details>
 
@@ -163,134 +173,77 @@ cd AndroidClient && ./gradlew assembleDebug
 
 ## Usage
 
-### USB mode (default — lowest latency)
+### Wireless Multi-Mac Mode (SideKick Workflow)
 
-1. Connect tablet to Mac via **USB-C**
-2. Launch **Side Screen** on Mac (runs in menu bar — port forwarding is set up automatically)
-3. Open **Side Screen** on tablet → keep on the **USB** tab → tap **Connect**
-4. Done — drag windows to your new display
+1. Launch **SideKick** on each of your MacBooks → in the **Connection** tab, select **Wireless** and click **Start** (a QR code appears).
+2. Open **SideKick** on your Android tablet → switch to the **Wireless** tab → tap **Scan QR Code** and scan each MacBook once.
+3. **Automatic Connection & Switching:**
+   - When only **one** paired MacBook is running SideKick on your WiFi, opening the Android app connects to it automatically.
+   - When **multiple** paired MacBooks are online, the Android app highlights the online Macs (`● Online`) so you can pick which Mac to connect to.
+   - **Switch Macs at any time:** Press `⌘⇧T` (or click **Take Over Tablet**) on the MacBook you want to switch to, or open the in-stream settings (`⚙`) on the tablet and tap another paired Mac.
+   - **Disconnect without stopping the server:** Press `⌘⇧D` (or click **Disconnect Tablet** in the Mac menu bar) to close the tablet session and remove the virtual display while keeping the Mac ready for the next connection.
 
-### Wireless mode (new in 0.8.0 — no cable)
+### USB Mode (Lowest Latency)
 
-1. Launch **Side Screen** on Mac → toggle to the **Wireless** tab → a QR code appears
-2. Open **Side Screen** on tablet → switch to the **Wireless** tab → tap **Scan QR Code** → grant camera permission → aim at the QR on the Mac
-3. The tablet remembers the Mac. Subsequent launches auto-reconnect — no rescan.
-
-Wireless mode requires both devices to be on the same WiFi network. **5 GHz is strongly recommended** — 2.4 GHz can introduce noticeable jitter on dynamic content. If you need to revoke access, click **Reset Token (forget all)** on the Mac and re-pair each tablet.
-
-USB mode remains the lowest-latency option for drawing or fast-paced gaming. Wireless adds 10–50 ms depending on WiFi quality.
-
-### Headless mode (new in 0.11.0 — no Mac interaction)
-
-In Settings → Startup, turn on **Launch at Login** and **Auto-start streaming on launch**, then pick the **Startup mode** (USB or Wireless). On your next login the server starts automatically — just open Side Screen on the tablet and tap Connect (USB) or Reconnect (Wireless).
-
-First-time setup still needs a screen once to grant Screen Recording permission; after that the Mac runs fully headless. For wireless headless use, give the Mac a static IP or DHCP reservation, and consider enabling macOS Screen Sharing as a fallback way in.
+1. Connect the tablet to your Mac via **USB-C**.
+2. In **SideKick** on Mac → **Connection** tab → select **USB (Cable)** and click **Start**.
+3. Open **SideKick** on the tablet → **USB** tab → tap **Connect**.
 
 ---
 
 ## Configuration
 
-| Setting | Options | Default |
-|---------|---------|---------|
-| Resolution | 720p to 8K, 30+ presets + custom | 1920x1200 |
-| Frame Rate | 30, 60, 90, 120 FPS | 120 |
-| Bitrate | 20–5000 Mbps | 1000 Mbps |
-| Quality | Ultra Low, Low, Medium, High | Ultra Low |
-| HiDPI (Retina) | On/Off | Off |
-| Gaming Boost | On/Off (1 Gbps, 120 Hz) | Off |
-| Touch Input | On/Off | On |
+Settings in the macOS app are organized into four tabs:
+
+| Tab | Settings & Actions |
+|---|---|
+| **Connection** | Mode (`USB` / `Wireless`), QR Code & Paired Token management, `Launch at Login`, `Auto-start streaming on launch`, `Startup mode` |
+| **Display & Touch** | Resolution presets (`720p` to `8K` + custom), `HiDPI (Retina)` mode, `Enable Touch Input` (all display changes apply live without disconnecting the tablet) |
+| **Stream & Quality** | `Refresh Rate` (30–120 Hz), `Target Bitrate` (20–5000 Mbps), `Encoding Latency`, `Gaming Boost` (1 Gbps, 120 Hz) |
+| **System & Status** | Live connection & permission status, `Reset macOS Permissions (TCC)`, `Register Actions in Vorssaint` |
 
 ---
 
 ## Troubleshooting
 
 <details>
-<summary><strong>"SideScreen is damaged" on macOS</strong></summary>
+<summary><strong>macOS permissions (Screen Recording / Accessibility) stop working after an update</strong></summary>
 
-Versions before 1.1.0 were not notarized. Update to the latest release from [GitHub Releases](https://github.com/tranvuongquocdat/SideScreen/releases), which opens without any workaround. If you must keep an old version, run `sudo xattr -cr /Applications/SideScreen.app` once.
+Open **SideKick Settings → System & Status → Maintenance & Integrations** and click **Reset Permissions**, then re-enable **SideKick** in **System Settings → Privacy & Security → Screen Recording** and **Accessibility**. To prevent macOS from invalidating permissions on future local builds, run `./scripts/setup_signing_cert.sh` once and mark `"SideKick Local Signing"` as *Always Trust* in Keychain Access.
 </details>
 
 <details>
-<summary><strong>"Connection refused" on Android</strong></summary>
+<summary><strong>"Connection refused" on Android (USB mode)</strong></summary>
 
-The Mac app sets up `adb reverse` automatically when streaming starts. If it still fails, make sure `adb` is installed (via Android SDK or Homebrew: `brew install android-platform-tools`) and your device has USB debugging enabled.
-</details>
-
-<details>
-<summary><strong>High latency or stuttering</strong></summary>
-
-- Lower resolution or frame rate
-- Ensure H.265 hardware codec support on your device
-- For USB mode, use a high-quality USB-C cable (not charge-only)
-- For wireless mode, ensure both devices are on **5 GHz WiFi**, not 2.4 GHz; reduce refresh rate to 60 Hz if jitter persists
+The Mac app sets up `adb reverse` automatically when streaming starts. Make sure `adb` is installed (`brew install --cask android-platform-tools`) and USB debugging is enabled on your tablet.
 </details>
 
 <details>
 <summary><strong>Wireless: "Couldn't reach Mac" / connection times out</strong></summary>
 
-- Both devices must be on the same WiFi network (and same subnet — some mesh routers isolate "guest" devices)
-- Click **Start** on the Mac before scanning the QR — the listener only binds when the server is running
-- If the Mac changes WiFi or its LAN IP, scan a fresh QR (the cached one points to the old address)
-- macOS may prompt for **Local Network** permission on first wireless toggle — grant it; without it, LAN inbound is silently dropped
-</details>
-
-<details>
-<summary><strong>Wireless: "Re-pair required" after restart / reinstall</strong></summary>
-
-The Mac's auth token resets when you click **Reset Token (forget all)** or reinstall the app. Tap **Scan QR Code** on the Android client and scan the new QR shown on the Mac.
+- Both devices must be on the same WiFi network and subnet (5 GHz strongly recommended).
+- Click **Start** on the Mac so the server and Bonjour service (`_sidescreen._tcp`) are active.
+- Ensure macOS **Local Network** permission is granted for **SideKick**.
 </details>
 
 <details>
 <summary><strong>Tablet goes black whenever an app is fullscreen on the Mac</strong></summary>
 
-This is macOS, not the stream: with **"Displays have separate Spaces"** turned off, macOS blanks every other display — including the virtual one the tablet shows — as soon as any app enters fullscreen. Turn it on in **System Settings → Desktop & Dock → Mission Control → Displays have separate Spaces**, then log out and back in. The Mac app shows a warning in its Status panel when this setting is off.
-</details>
-
-<details>
-<summary><strong>Virtual display not appearing</strong></summary>
-
-Grant Screen Recording permission: **System Preferences → Privacy & Security → Screen Recording → Enable Side Screen**
+With **"Displays have separate Spaces"** turned off, macOS blanks every other display when an app enters fullscreen. Turn it on in **System Settings → Desktop & Dock → Mission Control → Displays have separate Spaces**, then log out and back in.
 </details>
 
 ---
 
-## Contributing
+## Credits & Upstream Support
 
-Contributions are welcome!
-
-- ⭐ **Star** this repo to help others discover it
-- 🐛 **Report bugs** via [Issues](https://github.com/tranvuongquocdat/SideScreen/issues)
-- 💡 **Suggest features** via [Issues](https://github.com/tranvuongquocdat/SideScreen/issues)
-- 🔧 **Submit PRs** — see [CONTRIBUTING.md](CONTRIBUTING.md)
-
----
-
-## Support
-
-If Side Screen is useful to you, consider supporting development:
-
-<div align="center">
-
-[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/tranvuongqk)
-[![GitHub Sponsors](https://img.shields.io/badge/GitHub%20Sponsors-EA4AAA?style=for-the-badge&logo=github-sponsors&logoColor=white)](https://github.com/sponsors/tranvuongquocdat)
-[![VietQR](https://img.shields.io/badge/Vietnam-VietQR-DA251D?style=for-the-badge&logoColor=white)](https://sidescreen.dev/donate.html)
-
-</div>
-
-🇻🇳 Vietnamese users — scan VietQR for a local bank transfer (no international fees) at [sidescreen.dev/donate](https://sidescreen.dev/donate.html).
+- **Original Project (`SideScreen`):** Created by [**Tran Vuong Quoc Dat**](https://github.com/tranvuongquocdat) ([tranvuongquocdat/SideScreen](https://github.com/tranvuongquocdat/SideScreen) · [sidescreen.dev](https://sidescreen.dev)).
+  If you want to support the original creator of SideScreen:
+  [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-FFDD00?style=flat-square&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/tranvuongqk)
+  [![GitHub Sponsors](https://img.shields.io/badge/GitHub%20Sponsors-EA4AAA?style=flat-square&logo=github-sponsors&logoColor=white)](https://github.com/sponsors/tranvuongquocdat)
+- **SideKick Multi-Mac Fork:** Maintained by [**kleinski**](https://github.com/kleinski) ([kleinski/SideKick](https://github.com/kleinski/SideKick)).
 
 ---
 
 ## License
 
 [MIT License](LICENSE) — free for personal and commercial use.
-
----
-
-<div align="center">
-
-Made with ❤️ by **Tran Vuong Quoc Dat**
-
-[Report Bug](https://github.com/tranvuongquocdat/SideScreen/issues) · [Request Feature](https://github.com/tranvuongquocdat/SideScreen/issues) · [Discussions](https://github.com/tranvuongquocdat/SideScreen/discussions)
-
-</div>
