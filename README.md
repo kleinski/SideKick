@@ -2,22 +2,15 @@
 
 <div align="center">
 
-<img src="resources/logo/sidescreen-icon.png" alt="Side Screen" width="128"/>
+<img src="resources/logo/sidescreen-icon.png" alt="SideKick" width="128"/>
 
-<h1>Side Screen</h1>
+<h1>SideKick</h1>
 
-<p><em>Turn your Android tablet into a second display for macOS — USB-C or wireless over WiFi</em></p>
+<p><em>Turn your Android tablet into a second display for multiple MacBooks — USB-C or wireless over WiFi with instant Multi-Mac Takeover</em></p>
 
 <p>
-  <img src="https://img.shields.io/github/v/release/tranvuongquocdat/SideScreen?style=for-the-badge&label=version&color=blue" alt="Version">
-  <a href="https://github.com/tranvuongquocdat/SideScreen/blob/main/LICENSE">
+  <a href="https://github.com/kleinski/SideKick/blob/main/LICENSE">
     <img src="https://img.shields.io/github/license/tranvuongquocdat/SideScreen?style=for-the-badge&color=34C759" alt="License">
-  </a>
-  <a href="https://github.com/tranvuongquocdat/SideScreen/stargazers">
-    <img src="https://img.shields.io/github/stars/tranvuongquocdat/SideScreen?style=for-the-badge&color=FF9500" alt="Stars">
-  </a>
-  <a href="https://github.com/tranvuongquocdat/SideScreen/releases">
-    <img src="https://img.shields.io/github/downloads/tranvuongquocdat/SideScreen/total?style=for-the-badge&color=8E44AD&label=downloads" alt="Downloads">
   </a>
 </p>
 
@@ -31,24 +24,21 @@
 
 ---
 
-## Branch-Strategie (`main` vs. `sidekick`)
+## SideKick – Eigenständiger Fork von SideScreen
 
-- **`main` (Upstream-PR-Branch, Commit `487002d`):**
-  - Behält alle Original-Namen (`Side Screen`), Bundle-/App-IDs (`com.sidescreen.app`) und Sparkle/Play-Einstellungen bei.
-  - Enthält ausschließlich die sauberen Feature-Erweiterungen (Multi-Mac-Persistenz, Bonjour-Discovery, Smart Auto-Connect, Zwei-Wege-Takeover, Menü-/Footer-Integration, URL-Schema & CLI). Damit lassen sich jederzeit ohne Rebranding-Ballast Pull Requests gegen `tranvuongquocdat/SideScreen` stellen.
-- **`sidekick` (Dein lokaler Branch, aktuell ausgecheckt, Commit `7c82038`):**
-  - Setzt Name & IDs durchgehend auf **SideKick** (`SideKick.app`, macOS Bundle-ID `com.sidekick.app`, Android `applicationId = "com.sidekick.app"` in `AndroidClient/app/build.gradle.kts`).
-  - Deaktiviert sowohl Sparkle-Checks (`MacHost/Info.plist`, `scripts/build_mac.sh`) als auch den Google-Play-Updater (`AndroidClient/app/src/main/java/com/sidescreen/app/AppUpdater.kt`).
-  - Wenn vom Original-Autor Updates kommen:
-    ```bash
-    git checkout main && git pull upstream main && git checkout sidekick && git rebase main
-    ```
+**SideKick** (`https://github.com/kleinski/SideKick`) ist ein eigenständiger Fork von [tranvuongquocdat/SideScreen](https://github.com/tranvuongquocdat/SideScreen), erweitert für den nahtlosen Betrieb eines Android-Tablets mit **mehreren MacBooks**:
 
-### Lokale Steuerung & Vorssaint-Integration (`sidekick`-Branch)
-
-- **URL-Schema:** `sidekick://takeover`, `sidekick://toggle`, `sidekick://start`, `sidekick://stop`, `sidekick://settings`
-- **CLI-Flags:** `/Applications/SideKick.app/Contents/MacOS/SideKick --takeover` (oder `--toggle`, `--start`, `--stop`, `--settings`)
-- **Vorssaint Command Bar:** `./scripts/register_vorssaint.sh` registriert die SideKick-Aktionen direkt in Vorssaint (`com.vorssaint.utils` -> `commandBarLinks`).
+- **Multi-Mac Wireless Pairing & Bonjour Discovery (`_sidescreen._tcp`):** Einmal pro MacBook koppeln – das Tablet speichert beliebig viele Macs dauerhaft, aktualisiert deren IP-Adressen automatisch per mDNS und verbindet sich beim Start automatisch, wenn genau ein gekoppeltes MacBook online ist (oder zeigt eine Vorauswahl an, wenn mehrere gleichzeitig online sind).
+- **Zwei-Wege-Takeover (`⌘⇧T`):** Das Tablet kann jederzeit während eines laufenden Streams per 1-Tap vom Mac (Menüleiste, Settings-Footer, Shortcut `⌘⇧T`, URL-Schema) oder direkt auf dem Tablet (In-Stream-Einstellungen) auf ein anderes MacBook umgeschaltet werden (signiertes UDP-Handover auf Port `54322`).
+- **On-Demand Virtual Display & Disconnect Tablet (`⌘⇧D`):** Das virtuelle macOS-Display wird erst erzeugt, wenn sich ein Tablet tatsächlich verbindet, und beim Trennen sofort wieder zerstört – es verschwinden nie wieder Fenster auf einem unsichtbaren Zweitbildschirm. Mit **Disconnect Tablet** (`⌘⇧D`) lässt sich das Tablet trennen, während der Streaming-Server im Standby weiterlauscht.
+- **Live-Auflösungs-, HiDPI- & Refresh-Rate-Wechsel:** Änderungen an Auflösung, Retina/HiDPI oder Bildwiederholrate bauen das virtuelle Display im laufenden Betrieb neu auf, ohne die Tablet-Verbindung zu verlieren.
+- **4-Tab Settings UI & Hintergrundbetrieb:** Übersichtliche Aufteilung in *Connection*, *Display & Touch*, *Stream & Quality* und *System & Status*. Beim Schließen des Einstellungsfensters (`×` / `⌘W`) läuft SideKick ruhig in der Menüleiste weiter.
+- **Persistentes Code-Signing & Automatischer TCC-Reset:** Unterstützt ein lokales Code-Signing-Zertifikat (`./scripts/setup_signing_cert.sh` -> `"SideKick Local Signing"`) sowie automatisches `tccutil reset` bei Binär-Updates, damit macOS-Berechtigungen (*Screen Recording* & *Accessibility*) bei Updates nicht manuell gelöscht werden müssen.
+- **URL-Schema, CLI & Vorssaint-Integration:**
+  - **URL-Schema:** `sidekick://takeover`, `sidekick://disconnect`, `sidekick://toggle`, `sidekick://start`, `sidekick://stop`, `sidekick://settings`
+  - **CLI-Flags:** `/Applications/SideKick.app/Contents/MacOS/SideScreen --takeover` (oder `--disconnect`, `--toggle`, `--start`, `--stop`, `--settings`)
+  - **Vorssaint Command Bar:** Automatische Registrierung beim ersten Start (sowie manuell unter *Settings → System & Status → Maintenance & Integrations*).
+- **Eigenständige App-Identität:** Durchgehend `SideKick.app` (`com.sidekick.app` auf macOS & Android) mit deaktivierten Upstream-Auto-Updatern (Sparkle / Google Play).
 
 ---
 
