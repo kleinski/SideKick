@@ -173,7 +173,7 @@ class StreamClient(
         object CodeRejected : PairingError("Pairing code not accepted")
 
         /** The Mac runs a version that predates code pairing. */
-        object HostTooOld : PairingError("Update Side Screen on the Mac to use code pairing")
+        object HostTooOld : PairingError("Update SideKick on the Mac to use code pairing")
     }
 
     data class PairingSuccess(val token: ByteArray, val macName: String)

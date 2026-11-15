@@ -6,7 +6,7 @@ enum PairingURL {
         var nameAllowed = CharacterSet.urlQueryAllowed
         nameAllowed.remove(charactersIn: "&=?#")
         let nameEncoded = name.addingPercentEncoding(withAllowedCharacters: nameAllowed) ?? ""
-        var url = "sidescreen://\(host):\(port)?t=\(tokenStr)&name=\(nameEncoded)"
+        var url = "sidekick://\(host):\(port)?t=\(tokenStr)&name=\(nameEncoded)"
         if let hostId = hostId, !hostId.isEmpty {
             let idEncoded = hostId.addingPercentEncoding(withAllowedCharacters: nameAllowed) ?? ""
             url += "&id=\(idEncoded)"

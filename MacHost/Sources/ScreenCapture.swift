@@ -619,7 +619,7 @@ class ScreenCapture {
     /// stopStreaming.
     private func createDisplaySleepAssertion() {
         guard !hasDisplaySleepAssertion else { return }
-        let reason = "Side Screen is streaming to an external tablet display" as CFString
+        let reason = "SideKick is streaming to an external tablet display" as CFString
         let result = IOPMAssertionCreateWithName(
             kIOPMAssertionTypePreventUserIdleDisplaySleep as CFString,
             IOPMAssertionLevel(kIOPMAssertionLevelOn),
@@ -680,7 +680,7 @@ class ScreenCapture {
 
         // Video-range to match the SCStream path (see #55 note above).
         let pixelFormat = Int32(kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange)
-        let queue = DispatchQueue(label: "com.sidescreen.cgdisplaystream", qos: .userInteractive)
+        let queue = DispatchQueue(label: "com.sidekick.cgdisplaystream", qos: .userInteractive)
 
         // Without kCGDisplayStreamShowCursor the fallback stream never
         // composites the cursor at all (the key defaults to false), so any

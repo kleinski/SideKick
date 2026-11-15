@@ -1337,47 +1337,40 @@ struct AboutPopover: View {
                         .foregroundColor(.secondary)
                 }
                 Spacer()
-                Button("Check for Updates…") {
-                    AppUpdater.shared.checkForUpdates(nil)
+                Button("GitHub Releases…") {
+                    NSWorkspace.shared.open(AppInfo.releases)
                 }
-                .disabled(!updater.canCheckForUpdates)
-                .help(updater.canCheckForUpdates
-                      ? "Look for a newer version now. Side Screen also checks once a day."
-                      : "Update checks are only available in the released build.")
+                .help("Open SideKick releases on GitHub")
             }
 
-            Text("Turns an Android tablet or phone into a second display for your Mac — over USB or Wi‑Fi, with touch control. Free and open source.")
+            Text("Turns your Android tablet into a second display across multiple MacBooks — over USB-C or encrypted Wi‑Fi with instant Multi-Mac Takeover. Free and open source (MIT).")
                 .font(.system(size: 12))
                 .foregroundColor(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
-            // Justified: first link flush left, last flush right, equal gaps between.
             HStack(spacing: 0) {
-                Link("Website", destination: AppInfo.website)
+                Link("SideKick GitHub", destination: AppInfo.github)
                 Spacer()
-                Link("GitHub", destination: AppInfo.github)
+                Link("Releases", destination: AppInfo.releases)
                 Spacer()
-                Link("What's New", destination: AppInfo.changelog)
-                Spacer()
-                Link("Report a Problem", destination: AppInfo.reportProblem)
+                Link("Report an Issue", destination: AppInfo.reportProblem)
             }
             .font(.system(size: 12))
 
             Divider()
 
-            Text("If you find Side Screen useful, [support the developer](https://sidescreen.dev/donate.html) — it keeps me motivated to build more useful things.")
-                .font(.system(size: 12))
-                .fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 4) {
+                    Text("Multi-Mac fork maintained by")
+                    Link("kleinski", destination: AppInfo.github)
+                }
+                .font(.system(size: 12, weight: .medium))
 
-            HStack(spacing: 4) {
-                Spacer()
-                Text("Developed by Tran Vuong Quoc Dat with")
-                Image(systemName: "heart.fill")
-                    .foregroundColor(.red)
-                Spacer()
+                Text("Gratefully based on [SideScreen](https://github.com/tranvuongquocdat/SideScreen) by **Tran Vuong Quoc Dat** (MIT License). If you enjoy this project, please consider [supporting the original author](https://sidescreen.dev/donate.html).")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            .font(.system(size: 11))
-            .foregroundColor(.secondary)
         }
         .padding(16)
         .frame(width: 400)
@@ -1941,7 +1934,7 @@ struct WirelessSection: View {
                     } else {
                         Text("Generating QR…").foregroundColor(.secondary)
                     }
-                    Text("Scan this QR from Side Screen Android (Wireless tab)")
+                    Text("Scan this QR from SideKick on Android (Wireless tab)")
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)

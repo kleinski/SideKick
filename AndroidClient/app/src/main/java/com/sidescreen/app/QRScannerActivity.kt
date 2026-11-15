@@ -71,12 +71,17 @@ class QRScannerActivity : AppCompatActivity() {
         val input = InputImage.fromMediaImage(mediaImage, proxy.imageInfo.rotationDegrees)
         scanner.process(input)
             .addOnSuccessListener { barcodes ->
-                val raw = barcodes.firstOrNull { it.rawValue?.startsWith("sidescreen://") == true }?.rawValue
+                val raw =
+                    barcodes
+                        .firstOrNull {
+                            val v = it.rawValue ?: return@firstOrNull false
+                            v.startsWith("sidekick://") || v.startsWith("sidescreen://")
+                        }?.rawValue
                 if (raw != null && !alreadyDelivered) {
                     alreadyDelivered = true
                     val parsed = PairingURL.parse(raw)
                     if (parsed == null) {
-                        Toast.makeText(this, "Invalid QR, expected SideScreen pairing code", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this, "Invalid QR, expected SideKick pairing code", Toast.LENGTH_SHORT).show()
                         alreadyDelivered = false
                     } else {
                         setResult(RESULT_OK, Intent().putExtra(EXTRA_URL, raw))

@@ -43,9 +43,10 @@ enum AppInfo {
     static let version: String =
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev"
 
-    static let website = URL(string: "https://sidescreen.dev")!
-    static let donate = URL(string: "https://sidescreen.dev/donate.html")!
-    static let github = URL(string: "https://github.com/tranvuongquocdat/SideScreen")!
-    static let changelog = URL(string: "https://github.com/tranvuongquocdat/SideScreen/blob/main/CHANGELOG.md")!
-    static let reportProblem = URL(string: "https://github.com/tranvuongquocdat/SideScreen/issues/new/choose")!
+    static let github = URL(string: "https://github.com/kleinski/SideKick")!
+    static let releases = URL(string: "https://github.com/kleinski/SideKick/releases")!
+    static let reportProblem = URL(string: "https://github.com/kleinski/SideKick/issues")!
+    static let upstreamGithub = URL(string: "https://github.com/tranvuongquocdat/SideScreen")!
+    static let upstreamWebsite = URL(string: "https://sidescreen.dev")!
+    static let upstreamDonate = URL(string: "https://sidescreen.dev/donate.html")!
 }

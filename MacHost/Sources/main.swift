@@ -2,7 +2,7 @@ import Foundation
 import AppKit
 
 // CLI control mode for external launchers (Vorssaint, Shortcuts, Raycast, shell scripts):
-// Usage: SideScreen --takeover | --toggle | --start | --stop | --settings
+// Usage: SideKick --takeover | --disconnect | --toggle | --start | --stop | --settings
 let cliArgs = Set(CommandLine.arguments.dropFirst())
 let cliMap: [String: String] = [
     "--takeover": "takeover",
@@ -15,10 +15,9 @@ let cliMap: [String: String] = [
 if let matched = cliMap.first(where: { cliArgs.contains($0.key) }) {
     let command = matched.value
     let running = NSRunningApplication.runningApplications(withBundleIdentifier: "com.sidekick.app")
-        + NSRunningApplication.runningApplications(withBundleIdentifier: "com.sidescreen.app")
     if !running.isEmpty {
         DistributedNotificationCenter.default().postNotificationName(
-            NSNotification.Name("com.sidescreen.app.command"),
+            NSNotification.Name("com.sidekick.app.command"),
             object: command,
             userInfo: nil,
             deliverImmediately: true

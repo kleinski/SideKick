@@ -252,7 +252,7 @@ class WirelessTabController(
                         }
                         else -> {
                             views.scanStatusText?.text =
-                                "No paired MacBook reachable yet. Make sure Side Screen is running on your Mac."
+                                "No paired MacBook reachable yet. Make sure SideKick is running on your Mac."
                             renderPairedMacsList(refreshedEntries)
                         }
                     }
@@ -454,7 +454,7 @@ class WirelessTabController(
                     if (cached != null) {
                         "No response from ${cached.macName} at ${cached.host}:${cached.port}.\n\n" +
                             "The Mac may have switched WiFi networks, changed its port, or is not " +
-                            "running. Open SideScreen on the Mac and scan the new QR to re-pair."
+                            "running. Open SideKick on the Mac and scan the new QR to re-pair."
                     } else {
                         "No response from your Mac. Make sure both devices are on the same WiFi " +
                             "and the Mac app is running, then scan the QR again."

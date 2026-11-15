@@ -19,7 +19,7 @@ object PairingURL {
             } catch (e: Exception) {
                 return null
             }
-        if (uri.scheme != "sidescreen") return null
+        if (uri.scheme != "sidekick" && uri.scheme != "sidescreen") return null
         val host = uri.host ?: return null
         val port = uri.port.takeIf { it in 1..65535 } ?: return null
         val tokenB64 = uri.getQueryParameter("t") ?: return null

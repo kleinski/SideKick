@@ -45,8 +45,8 @@ import java.net.Socket
 
 private fun mainDiag(msg: String) = DiagLog.log("MA", msg)
 
-private const val MAC_APP_URL = "https://sidescreen.dev"
-private const val REPORT_PROBLEM_URL = "https://github.com/tranvuongquocdat/SideScreen/issues/new/choose"
+private const val MAC_APP_URL = "https://github.com/kleinski/SideKick/releases"
+private const val REPORT_PROBLEM_URL = "https://github.com/kleinski/SideKick/issues"
 
 class MainActivity : AppCompatActivity() {
     private lateinit var wirelessController: WirelessTabController
@@ -303,7 +303,7 @@ class MainActivity : AppCompatActivity() {
             wakeLock =
                 powerManager.newWakeLock(
                     PowerManager.PARTIAL_WAKE_LOCK,
-                    "SideScreen::PerformanceMode",
+                    "SideKick::PerformanceMode",
                 )
             // 30 minute timeout instead of infinite acquire
             wakeLock?.acquire(30 * 60 * 1000L)
@@ -1124,7 +1124,7 @@ class MainActivity : AppCompatActivity() {
         if (!CodecCapabilities.hasHevcDecoder && streamClient?.codecNegotiated != true) {
             mainDiag("AVC-only device but Mac did not negotiate codec — Mac app too old")
             runOnUiThread {
-                updateStatus("This device has no HEVC decoder. Update the SideScreen Mac app to enable H.264 support.")
+                updateStatus("This device has no HEVC decoder. Update the SideKick Mac app to enable H.264 support.")
             }
         }
     }
@@ -1487,7 +1487,7 @@ class MainActivity : AppCompatActivity() {
                                         "Code not accepted. Codes change after each use — " +
                                             "check the Mac for the current one."
                                     is StreamClient.PairingError.HostTooOld ->
-                                        "Update Side Screen on the Mac to use code pairing."
+                                        "Update SideKick on the Mac to use code pairing."
                                 },
                             )
                         } catch (e: StreamClient.WirelessConnectError) {
@@ -1677,7 +1677,7 @@ class MainActivity : AppCompatActivity() {
                 val errorMessage =
                     when {
                         e.message?.contains("ECONNREFUSED") == true -> {
-                            "Mac server is not running.\n\nPlease start Side Screen.app on your Mac first."
+                            "Mac server is not running.\n\nPlease start SideKick.app on your Mac first."
                         }
 
                         e.message?.contains("Network is unreachable") == true -> {
@@ -1691,7 +1691,7 @@ class MainActivity : AppCompatActivity() {
 
                         else -> {
                             "Connection failed: ${e.message}\n\n" +
-                                "Try:\n• Start Side Screen.app on Mac\n" +
+                                "Try:\n• Start SideKick.app on Mac\n" +
                                 "• Check USB connection\n• Run: adb reverse tcp:$port tcp:$port"
                         }
                     }

@@ -5,13 +5,13 @@ import ApplicationServices
 import os.log
 @preconcurrency import ScreenCaptureKit
 
-// Debug file logger - writes to /tmp/sidescreen.log
+// Debug file logger - writes to /tmp/sidekick.log
 func debugLog(_ message: String) {
     let timestamp = DateFormatter.localizedString(from: Date(), dateStyle: .none, timeStyle: .medium)
     let line = "[\(timestamp)] \(message)\n"
     print(message)
     if let data = line.data(using: .utf8) {
-        let url = URL(fileURLWithPath: "/tmp/sidescreen.log")
+        let url = URL(fileURLWithPath: "/tmp/sidekick.log")
         if let handle = try? FileHandle(forWritingTo: url) {
             handle.seekToEndOfFile()
             handle.write(data)
@@ -97,7 +97,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         DistributedNotificationCenter.default().addObserver(
             self,
             selector: #selector(handleExternalCommandNotification(_:)),
-            name: NSNotification.Name("com.sidescreen.app.command"),
+            name: NSNotification.Name("com.sidekick.app.command"),
             object: nil
         )
 
@@ -429,7 +429,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 
         if let button = statusItem?.button {
-            button.image = NSImage(systemSymbolName: "display.2", accessibilityDescription: "Side Screen")
+            button.image = NSImage(systemSymbolName: "display.2", accessibilityDescription: "SideKick")
         }
 
         // Items are rebuilt on every open (menuNeedsUpdate) so the menu always
@@ -881,7 +881,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
             guard let server = streamingServer else {
                 throw NSError(
-                    domain: "SideScreen.Startup",
+                    domain: "SideKick.Startup",
                     code: 2,
                     userInfo: [NSLocalizedDescriptionKey: "The streaming server could not be created."]
                 )
@@ -915,7 +915,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             height: size.height,
             refreshRate: settings.refreshRate,
             hiDPI: settings.hiDPI,
-            name: "SideScreen"
+            name: "SideKick"
         )
 
         // Disable mirror mode (may fail if already in extend mode)
@@ -935,7 +935,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         guard let displayID = manager.displayID else {
             throw NSError(
-                domain: "SideScreen.Startup",
+                domain: "SideKick.Startup",
                 code: 1,
                 userInfo: [NSLocalizedDescriptionKey: "The virtual display was created without a display ID."]
             )
