@@ -24,21 +24,21 @@
 
 ---
 
-## SideKick – Eigenständiger Fork von SideScreen
+## SideKick — Standalone Multi-Mac Fork of SideScreen
 
-**SideKick** (`https://github.com/kleinski/SideKick`) ist ein eigenständiger Fork von [tranvuongquocdat/SideScreen](https://github.com/tranvuongquocdat/SideScreen), erweitert für den nahtlosen Betrieb eines Android-Tablets mit **mehreren MacBooks**:
+**SideKick** (`https://github.com/kleinski/SideKick`) is an independent fork of [tranvuongquocdat/SideScreen](https://github.com/tranvuongquocdat/SideScreen), engineered for seamless wireless operation of a single Android tablet across **multiple MacBooks**:
 
-- **Multi-Mac Wireless Pairing & Bonjour Discovery (`_sidescreen._tcp`):** Einmal pro MacBook koppeln – das Tablet speichert beliebig viele Macs dauerhaft, aktualisiert deren IP-Adressen automatisch per mDNS und verbindet sich beim Start automatisch, wenn genau ein gekoppeltes MacBook online ist (oder zeigt eine Vorauswahl an, wenn mehrere gleichzeitig online sind).
-- **Zwei-Wege-Takeover (`⌘⇧T`):** Das Tablet kann jederzeit während eines laufenden Streams per 1-Tap vom Mac (Menüleiste, Settings-Footer, Shortcut `⌘⇧T`, URL-Schema) oder direkt auf dem Tablet (In-Stream-Einstellungen) auf ein anderes MacBook umgeschaltet werden (signiertes UDP-Handover auf Port `54322`).
-- **On-Demand Virtual Display & Disconnect Tablet (`⌘⇧D`):** Das virtuelle macOS-Display wird erst erzeugt, wenn sich ein Tablet tatsächlich verbindet, und beim Trennen sofort wieder zerstört – es verschwinden nie wieder Fenster auf einem unsichtbaren Zweitbildschirm. Mit **Disconnect Tablet** (`⌘⇧D`) lässt sich das Tablet trennen, während der Streaming-Server im Standby weiterlauscht.
-- **Live-Auflösungs-, HiDPI- & Refresh-Rate-Wechsel:** Änderungen an Auflösung, Retina/HiDPI oder Bildwiederholrate bauen das virtuelle Display im laufenden Betrieb neu auf, ohne die Tablet-Verbindung zu verlieren.
-- **4-Tab Settings UI & Hintergrundbetrieb:** Übersichtliche Aufteilung in *Connection*, *Display & Touch*, *Stream & Quality* und *System & Status*. Beim Schließen des Einstellungsfensters (`×` / `⌘W`) läuft SideKick ruhig in der Menüleiste weiter.
-- **Persistentes Code-Signing & Automatischer TCC-Reset:** Unterstützt ein lokales Code-Signing-Zertifikat (`./scripts/setup_signing_cert.sh` -> `"SideKick Local Signing"`) sowie automatisches `tccutil reset` bei Binär-Updates, damit macOS-Berechtigungen (*Screen Recording* & *Accessibility*) bei Updates nicht manuell gelöscht werden müssen.
-- **URL-Schema, CLI & Vorssaint-Integration:**
-  - **URL-Schema:** `sidekick://takeover`, `sidekick://disconnect`, `sidekick://toggle`, `sidekick://start`, `sidekick://stop`, `sidekick://settings`
-  - **CLI-Flags:** `/Applications/SideKick.app/Contents/MacOS/SideScreen --takeover` (oder `--disconnect`, `--toggle`, `--start`, `--stop`, `--settings`)
-  - **Vorssaint Command Bar:** Automatische Registrierung beim ersten Start (sowie manuell unter *Settings → System & Status → Maintenance & Integrations*).
-- **Eigenständige App-Identität:** Durchgehend `SideKick.app` (`com.sidekick.app` auf macOS & Android) mit deaktivierten Upstream-Auto-Updatern (Sparkle / Google Play).
+- **Multi-Mac Wireless Pairing & Bonjour Discovery (`_sidescreen._tcp`):** Pair once per MacBook — the Android client stores multiple paired Macs persistently, automatically updates their IP addresses via mDNS/Bonjour, and smart-connects on launch when a single paired MacBook is online (or presents a pre-selected Mac picker when multiple paired Macs are online simultaneously).
+- **Two-Way Instant Takeover (`⌘⇧T`):** Switch the active tablet stream between MacBooks at any time with a single action — either initiated from the Mac (Menu Bar, Settings Footer, `⌘⇧T` shortcut, or URL scheme via HMAC-SHA256 signed UDP handover on port `54322`) or directly from the tablet's in-stream settings dialog.
+- **On-Demand Virtual Display & Disconnect Tablet (`⌘⇧D`):** The macOS virtual display is created strictly on demand when a tablet connects and is immediately destroyed when it disconnects — preventing macOS windows from ever getting stranded on an unseen second desktop. Use **Disconnect Tablet** (`⌘⇧D`) to drop the active tablet session while keeping the server listening in standby.
+- **Live Resolution, HiDPI & Refresh Rate Switching:** Changing resolution, Retina/HiDPI mode, or refresh rate rebuilds the virtual display and capture pipeline in-place without dropping the active tablet connection.
+- **4-Tab Settings UI & Background Menu Bar Mode:** Cleanly organized into *Connection*, *Display & Touch*, *Stream & Quality*, and *System & Status*. Closing the Settings window (`×` or `⌘W`) keeps SideKick running quietly in the macOS menu bar.
+- **Persistent Local Code Signing & Automatic TCC Reset:** Supports a local code-signing certificate (`./scripts/setup_signing_cert.sh` -> `"SideKick Local Signing"`) and automatic `tccutil reset` on binary changes so macOS *Screen Recording* and *Accessibility* permissions persist cleanly across updates.
+- **URL Scheme, CLI & Launcher Integration:**
+  - **URL Scheme:** `sidekick://takeover`, `sidekick://disconnect`, `sidekick://toggle`, `sidekick://start`, `sidekick://stop`, `sidekick://settings`
+  - **CLI Flags:** `/Applications/SideKick.app/Contents/MacOS/SideScreen --takeover` (or `--disconnect`, `--toggle`, `--start`, `--stop`, `--settings`)
+  - **Vorssaint Command Bar:** Automatically registers Quick Links on first launch when `/Applications/Vorssaint.app` is installed (and can be triggered manually under *Settings → System & Status → Maintenance & Integrations*).
+- **Dedicated App Identity:** Uses `SideKick.app` (`com.sidekick.app` on both macOS and Android) with upstream auto-updaters (Sparkle / Google Play) disabled so custom builds are never overwritten.
 
 ---
 
