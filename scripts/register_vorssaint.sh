@@ -20,6 +20,14 @@ SIDEKICK_LINKS = [
         "runsWithoutArgument": True,
     },
     {
+        "id": "51DE41C4-0004-4000-8000-000000000004",
+        "name": "SideKick: Disconnect Tablet",
+        "kind": "link",
+        "destination": "sidekick://disconnect",
+        "runsDirectly": True,
+        "runsWithoutArgument": True,
+    },
+    {
         "id": "51DE41C4-0002-4000-8000-000000000002",
         "name": "SideKick: Toggle Streaming (Start / Stop)",
         "kind": "link",

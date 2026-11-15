@@ -68,16 +68,39 @@ struct VisualEffectBlur: NSViewRepresentable {
     }
 }
 
+// MARK: - Settings Tabs
+
+enum SettingsTab: String, CaseIterable, Identifiable {
+    case connection = "Connection"
+    case display = "Display & Touch"
+    case stream = "Stream & Quality"
+    case system = "System & Status"
+
+    var id: String { rawValue }
+
+    var icon: String {
+        switch self {
+        case .connection: return "wifi"
+        case .display: return "display"
+        case .stream: return "bolt.fill"
+        case .system: return "gearshape.fill"
+        }
+    }
+}
+
 // MARK: - Settings View
 
 struct SettingsView: View {
     @ObservedObject var settings: DisplaySettings
     @ObservedObject var updater = AppUpdater.shared
+    @State private var selectedTab: SettingsTab = .connection
     @State private var showPermissionAlert = false
     @State private var showResetConfirmation = false
     @State private var showAbout = false
     @State private var showAboutFromLogo = false
     @State private var headerHovered = false
+    @State private var vorssaintRegisteredFeedback = false
+    @State private var tccResetFeedback = false
     // Plain strings for the custom resolution fields: TextField(value:format:)
     // only commits on Return/focus-loss, so clicking Apply read stale values,
     // and .number formatting injected locale grouping separators ("1,200").
@@ -90,6 +113,10 @@ struct SettingsView: View {
     private var customResolutionValid: Bool {
         guard let w = customWidthValue, let h = customHeightValue else { return false }
         return DisplaySettings.isValidCustomResolution(width: w, height: h)
+    }
+
+    private var hasSystemAttentionWarning: Bool {
+        !settings.hasScreenRecordingPermission || !settings.displaysHaveSeparateSpaces
     }
 
     var body: some View {
@@ -111,7 +138,7 @@ struct SettingsView: View {
                             .scaleEffect(headerHovered ? 1.05 : 1)
                     }
                     .buttonStyle(.plain)
-                    .help("About Side Screen")
+                    .help("About SideKick")
                     .animation(.spring(response: 0.3), value: headerHovered)
                     .onHover { headerHovered = $0 }
                     .popover(isPresented: $showAboutFromLogo, arrowEdge: .bottom) {
@@ -176,26 +203,43 @@ struct SettingsView: View {
                     }
                 }
                 .padding(.horizontal, 20)
-                .padding(.vertical, 18)
+                .padding(.vertical, 16)
                 .background(.ultraThinMaterial)
 
                 Rectangle()
                     .fill(Color.primary.opacity(0.06))
                     .frame(height: 1)
 
-                // Connection mode picker — pinned, NOT scrollable.
-                HStack(spacing: 6) {
-                    ForEach(ConnectionMode.allCases, id: \.self) { mode in
-                        Button(action: { settings.connectionMode = mode }) {
-                            HStack(spacing: 4) {
-                                Image(systemName: mode == .usb ? "cable.connector" : "wifi")
-                                Text(mode == .usb ? "USB" : "Wireless")
+                // 4-Tab Navigation Bar — pinned below Header
+                HStack(spacing: 4) {
+                    ForEach(SettingsTab.allCases) { tab in
+                        let isSelected = selectedTab == tab
+                        Button(action: {
+                            withAnimation(.easeInOut(duration: 0.15)) {
+                                selectedTab = tab
+                            }
+                        }) {
+                            HStack(spacing: 5) {
+                                Image(systemName: tab.icon)
+                                    .font(.system(size: 11, weight: .semibold))
+                                Text(tab.rawValue)
+                                    .font(.system(size: 11, weight: isSelected ? .semibold : .medium))
+                                    .lineLimit(1)
+                                if tab == .system && hasSystemAttentionWarning {
+                                    Circle()
+                                        .fill(Color.orange)
+                                        .frame(width: 6, height: 6)
+                                }
                             }
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 8)
-                            .background(settings.connectionMode == mode ? Color.accentColor : Color.clear)
-                            .foregroundColor(settings.connectionMode == mode ? .white : .primary)
-                            .cornerRadius(6)
+                            .padding(.vertical, 7)
+                            .padding(.horizontal, 4)
+                            .background(
+                                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                    .fill(isSelected ? Color.accentColor : Color.clear)
+                            )
+                            .foregroundColor(isSelected ? .white : .primary)
+                            .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
                     }
@@ -203,8 +247,8 @@ struct SettingsView: View {
                 .padding(4)
                 .background(.ultraThinMaterial)
                 .cornerRadius(8)
-                .padding(.horizontal, 20)
-                .padding(.vertical, 10)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
                 .background(.ultraThinMaterial)
 
                 Rectangle()
@@ -213,762 +257,16 @@ struct SettingsView: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
-                        // Display Configuration
-                        FrostedGroupBox(title: "Display Configuration", icon: "display") {
-                            VStack(alignment: .leading, spacing: 16) {
-                                // Resolution
-                                VStack(alignment: .leading, spacing: 8) {
-                                    HStack {
-                                        Text("Resolution")
-                                            .font(.system(size: 11))
-                                            .foregroundColor(.secondary)
-                                        Spacer()
-                                        Toggle("Show all", isOn: $settings.showAllResolutions)
-                                            .toggleStyle(.switch)
-                                            .controlSize(.mini)
-                                    }
-
-                                    ScrollView {
-                                        VStack(alignment: .leading, spacing: 0) {
-                                            if settings.showAllResolutions {
-                                                // Custom (Apply) values aren't in any preset group —
-                                                // surface them so the selection is visible in the list.
-                                                if !DisplaySettings.allResolutions.contains(settings.resolution) {
-                                                    HStack(spacing: 6) {
-                                                        Text("Custom")
-                                                            .font(.system(size: 11, weight: .semibold))
-                                                        Text("User defined")
-                                                            .font(.system(size: 10))
-                                                            .foregroundColor(.secondary)
-                                                    }
-                                                    .padding(.horizontal, 12)
-                                                    .padding(.vertical, 6)
-                                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                                    .background(Color.primary.opacity(0.03))
-
-                                                    ResolutionRow(resolution: settings.resolution, isSelected: true) {}
-                                                }
-                                                ForEach(DisplaySettings.resolutionGroups) { group in
-                                                    HStack(spacing: 6) {
-                                                        Text(group.name)
-                                                            .font(.system(size: 11, weight: .semibold))
-                                                        Text(group.ratio)
-                                                            .font(.system(size: 10))
-                                                            .foregroundColor(.secondary)
-                                                    }
-                                                    .padding(.horizontal, 12)
-                                                    .padding(.vertical, 6)
-                                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                                    .background(Color.primary.opacity(0.03))
-
-                                                    ForEach(group.resolutions, id: \.self) { res in
-                                                        ResolutionRow(resolution: res, isSelected: settings.resolution == res) {
-                                                            settings.resolution = res
-                                                        }
-                                                    }
-                                                }
-                                            } else {
-                                                ForEach(DisplaySettings.commonResolutions, id: \.self) { res in
-                                                    ResolutionRow(resolution: res, isSelected: settings.resolution == res) {
-                                                        settings.resolution = res
-                                                    }
-                                                }
-                                                // Current selection from the full list or a custom
-                                                // Apply — keep it visible in the compact list too.
-                                                if !DisplaySettings.commonResolutions.contains(settings.resolution) {
-                                                    ResolutionRow(resolution: settings.resolution, isSelected: true) {}
-                                                }
-                                            }
-                                        }
-                                    }
-                                    .frame(height: settings.showAllResolutions ? 180 : 140)
-                                    .background(.ultraThinMaterial)
-                                    .cornerRadius(8)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 8)
-                                            .strokeBorder(Color.primary.opacity(0.1), lineWidth: 1)
-                                    )
-
-                                    if settings.showAllResolutions {
-                                        HStack(spacing: 8) {
-                                            TextField("W", text: $customWidthText)
-                                                .textFieldStyle(.roundedBorder)
-                                                .frame(width: 70)
-                                            Text("x")
-                                                .foregroundColor(.secondary)
-                                            TextField("H", text: $customHeightText)
-                                                .textFieldStyle(.roundedBorder)
-                                                .frame(width: 70)
-                                            Button("Apply") {
-                                                guard customResolutionValid,
-                                                      let w = customWidthValue,
-                                                      let h = customHeightValue else { return }
-                                                settings.customWidth = w
-                                                settings.customHeight = h
-                                                settings.applyCustomResolution()
-                                            }
-                                            .buttonStyle(.bordered)
-                                            .controlSize(.small)
-                                            .disabled(!customResolutionValid)
-                                        }
-                                        .onAppear {
-                                            customWidthText = String(settings.customWidth)
-                                            customHeightText = String(settings.customHeight)
-                                        }
-                                        if !customResolutionValid {
-                                            Text("Supported range: 640–7680 × 480–4320")
-                                                .font(.system(size: 10))
-                                                .foregroundColor(.orange)
-                                        }
-                                    }
-                                }
-
-                                // HiDPI (Retina)
-                                HStack {
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text("HiDPI (Retina)")
-                                            .font(.system(size: 11))
-                                            .foregroundColor(.secondary)
-                                        Text("Renders at 2× resolution for sharper text. Increases bandwidth.")
-                                            .font(.system(size: 10))
-                                            .foregroundColor(.secondary.opacity(0.7))
-                                    }
-                                    Spacer()
-                                    Toggle("", isOn: $settings.hiDPI)
-                                        .toggleStyle(.switch)
-                                        .controlSize(.mini)
-                                        .disabled(settings.isRunning)
-                                }
-
-                                // Rotation
-                                VStack(alignment: .leading, spacing: 8) {
-                                    Text("Rotation")
-                                        .font(.system(size: 11))
-                                        .foregroundColor(.secondary)
-
-                                    HStack(spacing: 12) {
-                                        ZStack {
-                                            RoundedRectangle(cornerRadius: 4)
-                                                .stroke(Color.accentColor.opacity(0.5), lineWidth: 1)
-                                                .frame(width: 80, height: 50)
-                                                .scaleEffect(x: settings.flipHorizontal ? -1 : 1, y: settings.flipVertical ? -1 : 1)
-                                                .rotationEffect(.degrees(Double(settings.rotation)))
-
-                                            Text(settings.rotation == 90 || settings.rotation == 270 ? "Portrait" : "Landscape")
-                                                .font(.system(size: 8))
-                                                .foregroundColor(.secondary)
-                                        }
-                                        .frame(width: 100, height: 80)
-
-                                        VStack(spacing: 6) {
-                                            HStack(spacing: 6) {
-                                                RotationButton(degrees: 270, label: "270", isSelected: settings.rotation == 270) {
-                                                    settings.rotation = 270
-                                                }
-                                                RotationButton(degrees: 0, label: "0", isSelected: settings.rotation == 0) {
-                                                    settings.rotation = 0
-                                                }
-                                                RotationButton(degrees: 90, label: "90", isSelected: settings.rotation == 90) {
-                                                    settings.rotation = 90
-                                                }
-                                            }
-                                            HStack(spacing: 6) {
-                                                Spacer()
-                                                RotationButton(degrees: 180, label: "180", isSelected: settings.rotation == 180) {
-                                                    settings.rotation = 180
-                                                }
-                                                Spacer()
-                                            }
-                                        }
-                                    }
-
-                                    if settings.rotation == 90 || settings.rotation == 270 {
-                                        Text("Display will be in portrait mode")
-                                            .font(.system(size: 10))
-                                            .foregroundColor(.accentColor)
-                                    }
-
-                                    VStack(alignment: .leading, spacing: 6) {
-                                        HStack {
-                                            VStack(alignment: .leading, spacing: 2) {
-                                                Text("Flip Horizontally")
-                                                    .font(.system(size: 11))
-                                                    .foregroundColor(.secondary)
-                                                Text("Mirror left and right")
-                                                    .font(.system(size: 10))
-                                                    .foregroundColor(.secondary.opacity(0.7))
-                                            }
-                                            Spacer()
-                                            Toggle("", isOn: $settings.flipHorizontal)
-                                                .toggleStyle(.switch)
-                                                .controlSize(.mini)
-                                        }
-
-                                        HStack {
-                                            VStack(alignment: .leading, spacing: 2) {
-                                                Text("Flip Vertically")
-                                                    .font(.system(size: 11))
-                                                    .foregroundColor(.secondary)
-                                                Text("Mirror top and bottom")
-                                                    .font(.system(size: 10))
-                                                    .foregroundColor(.secondary.opacity(0.7))
-                                            }
-                                            Spacer()
-                                            Toggle("", isOn: $settings.flipVertical)
-                                                .toggleStyle(.switch)
-                                                .controlSize(.mini)
-                                        }
-                                    }
-                                    .padding(.top, 4)
-
-                                    HStack {
-                                        Spacer()
-                                        Button(action: {
-                                            NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.displays?displayArrangement")!)
-                                        }) {
-                                            HStack(spacing: 4) {
-                                                Image(systemName: "rectangle.connected.to.line.below")
-                                                Text("Arrange Displays…")
-                                            }
-                                        }
-                                        .buttonStyle(.bordered)
-                                        .controlSize(.small)
-                                    }
-                                    .padding(.top, 10)
-                                }
-
-                            }
+                        switch selectedTab {
+                        case .connection:
+                            connectionTabContent
+                        case .display:
+                            displayTabContent
+                        case .stream:
+                            streamTabContent
+                        case .system:
+                            systemTabContent
                         }
-
-                        // Refresh Rate (own block)
-                        FrostedGroupBox(title: "Refresh Rate", icon: "speedometer") {
-                            VStack(alignment: .leading, spacing: 8) {
-                                HStack {
-                                    Text("Frame Rate")
-                                        .font(.system(size: 11))
-                                        .foregroundColor(.secondary)
-                                    Spacer()
-                                    Text("\(settings.refreshRate) Hz")
-                                        .font(.system(size: 11, weight: .medium))
-                                }
-
-                                HStack(spacing: 6) {
-                                    ForEach([30, 60, 90, 120], id: \.self) { rate in
-                                        BitrateButton(
-                                            label: "\(rate)",
-                                            value: rate,
-                                            currentValue: settings.refreshRate,
-                                            disabled: false
-                                        ) {
-                                            settings.refreshRate = rate
-                                        }
-                                    }
-                                }
-
-                                // Custom rate (issue #41): budget tablets can be
-                                // artifact-free below a preset but not at it —
-                                // let users find their panel's sweet spot.
-                                HStack(spacing: 8) {
-                                    Text("Custom")
-                                        .font(.system(size: 10))
-                                        .foregroundColor(.secondary)
-                                    Slider(
-                                        value: Binding(
-                                            get: { Double(settings.refreshRate) },
-                                            set: {
-                                                let rate = Int($0.rounded())
-                                                // Same-value stores still fire didSet +
-                                                // UserDefaults writes — skip them.
-                                                if rate != settings.refreshRate {
-                                                    settings.refreshRate = rate
-                                                }
-                                            }
-                                        ),
-                                        in: 15...120,
-                                        step: 1
-                                    )
-                                }
-
-                                if settings.refreshRate >= 90 {
-                                    Text("High refresh rate for smooth experience")
-                                        .font(.system(size: 10))
-                                        .foregroundColor(.green)
-                                } else if ![30, 60].contains(settings.refreshRate) {
-                                    Text("Custom rate — handy when a tablet shows artifacts above a certain FPS")
-                                        .font(.system(size: 10))
-                                        .foregroundColor(.secondary)
-                                }
-                            }
-                        }
-
-                        // Touch Control
-                        FrostedGroupBox(title: "Touch Control", icon: "hand.tap") {
-                            VStack(alignment: .leading, spacing: 8) {
-                                HStack {
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text("Enable Touch Input")
-                                            .font(.system(size: 12, weight: .medium))
-                                        Text("Control Mac from tablet touch")
-                                            .font(.system(size: 10))
-                                            .foregroundColor(.secondary)
-                                    }
-                                    Spacer()
-                                    Toggle("", isOn: $settings.touchEnabled)
-                                        .labelsHidden()
-                                }
-
-                                if !settings.touchEnabled {
-                                    Text("Touch input is disabled — tablet is display-only")
-                                        .font(.system(size: 10))
-                                        .foregroundColor(.orange)
-                                }
-                            }
-                        }
-
-                        // Network Settings (port — applies to both modes; listener binds on it)
-                        FrostedGroupBox(title: "Network Settings", icon: "network") {
-                            VStack(alignment: .leading, spacing: 8) {
-                                HStack {
-                                    Text("Server Port")
-                                        .font(.system(size: 11))
-                                        .foregroundColor(.secondary)
-                                    Spacer()
-                                    TextField("Port", value: $settings.port, format: .number)
-                                        .textFieldStyle(.roundedBorder)
-                                        .frame(width: 80)
-                                        .disabled(settings.isRunning)
-                                }
-
-                                if settings.isRunning {
-                                    Text("Stop server to change port")
-                                        .font(.system(size: 10))
-                                        .foregroundColor(.orange)
-                                } else if settings.connectionMode == .wireless {
-                                    Text("Changing the port invalidates existing pairings — re-scan the QR on each tablet.")
-                                        .font(.system(size: 10))
-                                        .foregroundColor(.secondary)
-                                } else if settings.port != 54321 {
-                                    Text("Custom port set — Android client must use the same port.")
-                                        .font(.system(size: 10))
-                                        .foregroundColor(.secondary)
-                                }
-                            }
-                        }
-
-                        // Wireless-mode-only: QR + Paired Devices.
-                        if settings.connectionMode == .wireless {
-                            WirelessSection(settings: settings,
-                                            pairedDeviceStore: (NSApp.delegate as? AppDelegate)?.pairedDeviceStore ?? PairedDeviceStore())
-                        }
-
-                        // Startup / headless behaviour
-                        FrostedGroupBox(title: "Startup", icon: "power") {
-                            VStack(alignment: .leading, spacing: 12) {
-                                if #available(macOS 13.0, *) {
-                                    HStack {
-                                        VStack(alignment: .leading, spacing: 2) {
-                                            Text("Launch at Login")
-                                                .font(.system(size: 12, weight: .medium))
-                                            Text("Run SideScreen in the background automatically after you log in.")
-                                                .font(.system(size: 10))
-                                                .foregroundColor(.secondary)
-                                        }
-                                        Spacer()
-                                        Toggle("", isOn: Binding(
-                                            get: { daemonEnabled },
-                                            set: { newValue in
-                                                do {
-                                                    if newValue {
-                                                        try DaemonManager.shared.enable()
-                                                    } else {
-                                                        try DaemonManager.shared.disable()
-                                                    }
-                                                } catch {
-                                                    print("Daemon toggle failed: \(error)")
-                                                }
-                                                daemonEnabled = DaemonManager.shared.isEnabled
-                                            }
-                                        ))
-                                        .labelsHidden()
-                                    }
-                                    Divider()
-                                }
-
-                                HStack {
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text("Auto-start streaming on launch")
-                                            .font(.system(size: 12, weight: .medium))
-                                        Text("Start the server automatically when the app opens, so the tablet can connect without touching the Mac.")
-                                            .font(.system(size: 10))
-                                            .foregroundColor(.secondary)
-                                    }
-                                    Spacer()
-                                    Toggle("", isOn: $settings.autoStartStreamingOnLaunch)
-                                        .labelsHidden()
-                                }
-
-                                Divider()
-
-                                HStack {
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text("Startup mode")
-                                            .font(.system(size: 12, weight: .medium))
-                                        Text("Which connection mode to start in when auto-starting.")
-                                            .font(.system(size: 10))
-                                            .foregroundColor(.secondary)
-                                    }
-                                    Spacer()
-                                    Picker("", selection: $settings.startupMode) {
-                                        Text("USB").tag(ConnectionMode.usb)
-                                        Text("Wireless").tag(ConnectionMode.wireless)
-                                    }
-                                    .pickerStyle(.segmented)
-                                    .labelsHidden()
-                                    .frame(width: 150)
-                                    .disabled(!settings.autoStartStreamingOnLaunch)
-                                }
-                            }
-                        }
-                        .onAppear {
-                            if #available(macOS 13.0, *) {
-                                daemonEnabled = DaemonManager.shared.isEnabled
-                            }
-                        }
-
-                        // Gaming Boost
-                        FrostedGroupBox(title: "Gaming Boost", icon: settings.gamingBoost ? "bolt.fill" : "bolt") {
-                            VStack(alignment: .leading, spacing: 16) {
-                                HStack {
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text("Enable Gaming Mode")
-                                            .font(.system(size: 12, weight: .medium))
-                                        Text("Optimized for competitive gaming")
-                                            .font(.system(size: 10))
-                                            .foregroundColor(.secondary)
-                                    }
-                                    Spacer()
-                                    Toggle("", isOn: $settings.gamingBoost)
-                                        .labelsHidden()
-                                }
-
-                                if settings.gamingBoost {
-                                    VStack(alignment: .leading, spacing: 6) {
-                                        HStack(spacing: 4) {
-                                            Image(systemName: "checkmark.circle.fill")
-                                                .foregroundColor(.green)
-                                                .font(.system(size: 10))
-                                            Text("High bitrate (1000 Mbps)")
-                                                .font(.system(size: 11))
-                                        }
-                                        HStack(spacing: 4) {
-                                            Image(systemName: "checkmark.circle.fill")
-                                                .foregroundColor(.green)
-                                                .font(.system(size: 10))
-                                            Text("120 Hz refresh rate")
-                                                .font(.system(size: 11))
-                                        }
-                                        HStack(spacing: 4) {
-                                            Image(systemName: "checkmark.circle.fill")
-                                                .foregroundColor(.green)
-                                                .font(.system(size: 10))
-                                            Text("Ultra-low latency encoding")
-                                                .font(.system(size: 11))
-                                        }
-                                    }
-                                    .padding(.leading, 4)
-                                    .foregroundColor(.secondary)
-                                }
-                            }
-                        }
-
-                        // Streaming Settings
-                        FrostedGroupBox(title: "Streaming Settings", icon: "antenna.radiowaves.left.and.right") {
-                            VStack(alignment: .leading, spacing: 16) {
-                                // Bitrate
-                                VStack(alignment: .leading, spacing: 10) {
-                                    HStack {
-                                        Text("Bitrate")
-                                            .font(.system(size: 11))
-                                            .foregroundColor(.secondary)
-                                        Spacer()
-                                        Text("\(settings.effectiveBitrate) Mbps")
-                                            .font(.system(size: 13, weight: .semibold, design: .monospaced))
-                                            .foregroundColor(.accentColor)
-                                    }
-
-                                    HStack(spacing: 6) {
-                                        BitrateButton(label: "100", value: 100, currentValue: settings.bitrate, disabled: settings.gamingBoost) {
-                                            settings.bitrate = 100
-                                        }
-                                        BitrateButton(label: "300", value: 300, currentValue: settings.bitrate, disabled: settings.gamingBoost) {
-                                            settings.bitrate = 300
-                                        }
-                                        BitrateButton(label: "500", value: 500, currentValue: settings.bitrate, disabled: settings.gamingBoost) {
-                                            settings.bitrate = 500
-                                        }
-                                        BitrateButton(label: "1000", value: 1000, currentValue: settings.bitrate, disabled: settings.gamingBoost) {
-                                            settings.bitrate = 1000
-                                        }
-                                        BitrateButton(label: "2000", value: 2000, currentValue: settings.bitrate, disabled: settings.gamingBoost) {
-                                            settings.bitrate = 2000
-                                        }
-                                    }
-
-                                    HStack(spacing: 8) {
-                                        Text("20")
-                                            .font(.system(size: 9))
-                                            .foregroundColor(.secondary)
-                                        Slider(value: Binding(
-                                            get: { Double(settings.bitrate) },
-                                            set: { settings.bitrate = Int($0) }
-                                        ), in: 20...5000, step: 10)
-                                        .disabled(settings.gamingBoost)
-                                        Text("5000")
-                                            .font(.system(size: 9))
-                                            .foregroundColor(.secondary)
-                                    }
-
-                                    if settings.gamingBoost {
-                                        HStack(spacing: 4) {
-                                            Image(systemName: "bolt.fill")
-                                                .font(.system(size: 10))
-                                            Text("Locked at 1000 Mbps in Gaming Boost")
-                                                .font(.system(size: 10))
-                                        }
-                                        .foregroundColor(.orange)
-                                    }
-                                }
-
-                                // Quality
-                                VStack(alignment: .leading, spacing: 8) {
-                                    Text("Quality Preset")
-                                        .font(.system(size: 11))
-                                        .foregroundColor(.secondary)
-
-                                    Picker("", selection: $settings.quality) {
-                                        Text("Ultra Low").tag("ultralow")
-                                        Text("Low").tag("low")
-                                        Text("Medium").tag("medium")
-                                        Text("High").tag("high")
-                                    }
-                                    .pickerStyle(.segmented)
-                                    .disabled(settings.gamingBoost)
-
-                                    if settings.gamingBoost {
-                                        Text("Quality locked to Ultra Low in Gaming Boost mode")
-                                            .font(.system(size: 10))
-                                            .foregroundColor(.orange)
-                                    } else if settings.quality == "ultralow" {
-                                        Text("Fastest encoding, lowest latency")
-                                            .font(.system(size: 10))
-                                            .foregroundColor(.green)
-                                    }
-                                }
-                            }
-                        }
-
-                        // Status
-                        FrostedGroupBox(title: "Status", icon: "checkmark.circle") {
-                            VStack(alignment: .leading, spacing: 12) {
-                                StatusRow(title: "Virtual Display",
-                                          status: settings.displayCreated ? "Active" : (settings.isRunning ? "Standby (on connect)" : "Inactive"),
-                                          color: settings.displayCreated ? .green : (settings.isRunning ? .orange : .secondary),
-                                          hint: "The macOS virtual display we render into. Created automatically only when a tablet connects, and removed when it disconnects so windows never get stranded on an unseen screen.")
-                                StatusRow(title: "Client Connected",
-                                          status: settings.clientConnected ? "Yes" : "No",
-                                          color: settings.clientConnected ? .green : .secondary,
-                                          hint: "Whether the Android client app currently has an active stream session.")
-                                StatusRow(
-                                    title: ProcessInfo.processInfo.operatingSystemVersion.majorVersion >= 26 ? "Screen & System Audio" : "Screen Recording",
-                                    status: settings.hasScreenRecordingPermission ? "Granted" : "Required",
-                                    color: settings.hasScreenRecordingPermission ? .green : .red,
-                                    hint: "macOS privacy permission required to capture the virtual display. Grant in System Settings → Privacy & Security → Screen Recording."
-                                )
-                                StatusRow(title: "Accessibility",
-                                          status: settings.hasAccessibilityPermission ? "Granted" : "Optional",
-                                          color: settings.hasAccessibilityPermission ? .green : .orange,
-                                          hint: "Optional permission. Required only if you want touch/tap input from the tablet to control the Mac. Streaming works without it.")
-                                if settings.isRunning {
-                                    StatusRow(title: "Capture Method",
-                                              status: settings.captureMethod,
-                                              color: settings.captureMethod.contains("fallback") ? .orange : .green,
-                                              hint: "Which macOS API is currently capturing the virtual display. SCStream is the modern path; CGDisplayStream fallback activates if SCStream fails (e.g. on certain virtual display configs).")
-                                }
-
-                                // Mode-aware contextual rows
-                                Divider().padding(.vertical, 4)
-                                if settings.connectionMode == .usb {
-                                    StatusRow(title: "ADB installed",
-                                              status: settings.adbInstalled ? "Installed" : "Missing",
-                                              color: settings.adbInstalled ? .green : .red,
-                                              hint: "USB mode tunnels the TCP stream through the cable using `adb reverse`. Requires the `adb` command on the Mac. Searched paths: Homebrew, /usr/local/bin, ~/Library/Android/sdk/platform-tools, and PATH (`which adb`).")
-                                    if !settings.adbInstalled {
-                                        Text("brew install android-platform-tools")
-                                            .font(.system(size: 10, design: .monospaced))
-                                            .padding(6)
-                                            .background(Color.black.opacity(0.08))
-                                            .cornerRadius(4)
-                                            .frame(maxWidth: .infinity, alignment: .leading)
-                                            .textSelection(.enabled)
-                                    }
-                                    StatusRow(title: "ADB reverse",
-                                              status: settings.adbReverseConfigured ? "OK" : "Pending",
-                                              color: settings.adbReverseConfigured ? .green : .orange,
-                                              hint: "Whether `adb reverse tcp:\(settings.port) tcp:\(settings.port)` is currently configured. The Mac app sets this up automatically when you click Start. Goes green within ~2 seconds after the tablet is plugged in and authorized.")
-                                    StatusRow(title: "USB device",
-                                              status: settings.usbDeviceConnected ? "Detected" : "Not detected",
-                                              color: settings.usbDeviceConnected ? .green : .red,
-                                              hint: "An Android device authorized for ADB and visible to your Mac. Plug in via USB-C and tap Allow on the device's USB debugging prompt.")
-                                } else {
-                                    StatusRow(title: "WiFi",
-                                              status: settings.wifiConnected ? "Connected" : "Disconnected",
-                                              color: settings.wifiConnected ? .green : .red,
-                                              hint: "Whether the Mac currently has a working internet route. Wireless mode requires the Mac to be on a WiFi (or Ethernet) network — the same network the tablet is on.")
-                                    StatusRow(title: "Listening on",
-                                              status: settings.listeningAddress.map { "\($0):\(settings.port)" } ?? "—",
-                                              color: settings.listeningAddress != nil ? .green : .secondary,
-                                              hint: "The LAN address the tablet must reach. The QR code embeds this exact host:port — if it changes (e.g. you switch WiFi), re-scan the new QR on the tablet.")
-                                }
-
-                                if !settings.hasScreenRecordingPermission {
-                                    VStack(alignment: .leading, spacing: 8) {
-                                        HStack(spacing: 6) {
-                                            Image(systemName: "exclamationmark.triangle.fill")
-                                                .foregroundColor(.orange)
-                                            Text(ProcessInfo.processInfo.operatingSystemVersion.majorVersion >= 26 ? "Screen & System Audio Recording Required" : "Screen Recording Required")
-                                                .font(.system(size: 12, weight: .medium))
-                                        }
-                                        Text(ProcessInfo.processInfo.operatingSystemVersion.majorVersion >= 26
-                                            ? "Required to capture the virtual display. Go to System Settings > Privacy & Security > Screen & System Audio Recording."
-                                            : "Required to capture the virtual display.")
-                                            .font(.system(size: 11))
-                                            .foregroundColor(.secondary)
-                                        HStack(spacing: 8) {
-                                            Button(action: {
-                                                NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!)
-                                            }) {
-                                                HStack {
-                                                    Image(systemName: "gear")
-                                                    Text("Open System Settings")
-                                                }
-                                            }
-                                            .buttonStyle(.borderedProminent)
-                                            .controlSize(.small)
-
-                                            Button(action: {
-                                                (NSApp.delegate as? AppDelegate)?.resetPermissionsAndReprompt()
-                                            }) {
-                                                HStack {
-                                                    Image(systemName: "arrow.triangle.2.circlepath")
-                                                    Text("Reset & Re-request")
-                                                }
-                                            }
-                                            .buttonStyle(.bordered)
-                                            .controlSize(.small)
-                                            .help("Automatically clears stale permission entries via tccutil and triggers a fresh macOS prompt.")
-                                        }
-                                    }
-                                    .padding(10)
-                                    .background(Color.orange.opacity(0.1))
-                                    .cornerRadius(8)
-                                }
-
-                                if !settings.displaysHaveSeparateSpaces {
-                                    VStack(alignment: .leading, spacing: 8) {
-                                        HStack(spacing: 6) {
-                                            Image(systemName: "exclamationmark.triangle.fill")
-                                                .foregroundColor(.orange)
-                                            Text("Tablet goes black in fullscreen apps")
-                                                .font(.system(size: 12, weight: .medium))
-                                        }
-                                        Text("\"Displays have separate Spaces\" is turned off, so macOS blanks every other display — including the tablet — whenever an app enters fullscreen. Turn it on in System Settings → Desktop & Dock → Mission Control, then log out and back in.")
-                                            .font(.system(size: 11))
-                                            .foregroundColor(.secondary)
-                                            .fixedSize(horizontal: false, vertical: true)
-                                        Button(action: {
-                                            NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.Desktop-Settings.extension")!)
-                                        }) {
-                                            HStack {
-                                                Image(systemName: "gear")
-                                                Text("Open System Settings")
-                                            }
-                                        }
-                                        .buttonStyle(.borderedProminent)
-                                        .controlSize(.small)
-                                    }
-                                    .padding(10)
-                                    .background(Color.orange.opacity(0.1))
-                                    .cornerRadius(8)
-                                }
-
-                                if !settings.hasAccessibilityPermission {
-                                    VStack(alignment: .leading, spacing: 8) {
-                                        HStack(spacing: 6) {
-                                            Image(systemName: "hand.tap.fill")
-                                                .foregroundColor(.blue)
-                                            Text("Enable Touch Control")
-                                                .font(.system(size: 12, weight: .medium))
-                                        }
-                                        Text("Control your Mac from your tablet.")
-                                            .font(.system(size: 11))
-                                            .foregroundColor(.secondary)
-                                        HStack(spacing: 8) {
-                                            Button(action: {
-                                                NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
-                                            }) {
-                                                HStack {
-                                                    Image(systemName: "gear")
-                                                    Text("Open Settings")
-                                                }
-                                                .frame(maxWidth: .infinity)
-                                            }
-                                            .buttonStyle(.borderedProminent)
-                                            .controlSize(.small)
-
-                                            Button(action: {
-                                                (NSApp.delegate as? AppDelegate)?.resetPermissionsAndReprompt()
-                                            }) {
-                                                HStack {
-                                                    Image(systemName: "arrow.triangle.2.circlepath")
-                                                    Text("Reset & Prompt")
-                                                }
-                                            }
-                                            .buttonStyle(.bordered)
-                                            .controlSize(.small)
-                                        }
-                                    }
-                                    .padding(10)
-                                    .background(Color.blue.opacity(0.08))
-                                    .cornerRadius(8)
-                                }
-                            }
-                        }
-
-                        // Performance (when connected)
-                        if settings.clientConnected {
-                            FrostedGroupBox(title: "Performance", icon: "speedometer") {
-                                HStack {
-                                    VStack(alignment: .leading) {
-                                        Text("FPS")
-                                            .font(.system(size: 10))
-                                            .foregroundColor(.secondary)
-                                        Text(String(format: "%.1f", settings.currentFPS))
-                                            .font(.system(size: 16, weight: .semibold))
-                                            .foregroundColor(.green)
-                                    }
-                                    Spacer()
-                                    VStack(alignment: .leading) {
-                                        Text("Bitrate")
-                                            .font(.system(size: 10))
-                                            .foregroundColor(.secondary)
-                                        Text(String(format: "%.1f Mbps", settings.currentBitrate))
-                                            .font(.system(size: 16, weight: .semibold))
-                                            .foregroundColor(.accentColor)
-                                    }
-                                }
-                            }
-                        }
-
                     }
                     .padding(20)
                 }
@@ -1083,6 +381,890 @@ struct SettingsView: View {
             }
         }
         .frame(width: 480, height: 780)
+    }
+
+    // MARK: - Tab 1: Connection
+
+    @ViewBuilder
+    private var connectionTabContent: some View {
+        if !settings.hasScreenRecordingPermission {
+            screenRecordingWarningBanner
+        }
+
+        // Connection Mode Selector
+        FrostedGroupBox(title: "Connection Mode", icon: settings.connectionMode == .usb ? "cable.connector" : "wifi") {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 6) {
+                    ForEach(ConnectionMode.allCases, id: \.self) { mode in
+                        Button(action: { settings.connectionMode = mode }) {
+                            HStack(spacing: 6) {
+                                Image(systemName: mode == .usb ? "cable.connector" : "wifi")
+                                Text(mode == .usb ? "USB Cable" : "Wireless (Wi‑Fi)")
+                                    .font(.system(size: 12, weight: .medium))
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 8)
+                            .background(settings.connectionMode == mode ? Color.accentColor : Color.primary.opacity(0.05))
+                            .foregroundColor(settings.connectionMode == mode ? .white : .primary)
+                            .cornerRadius(6)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+
+        if settings.connectionMode == .wireless {
+            WirelessSection(
+                settings: settings,
+                pairedDeviceStore: (NSApp.delegate as? AppDelegate)?.pairedDeviceStore ?? PairedDeviceStore()
+            )
+        } else {
+            FrostedGroupBox(title: "USB Connection Status", icon: "cable.connector") {
+                VStack(alignment: .leading, spacing: 10) {
+                    StatusRow(
+                        title: "ADB installed",
+                        status: settings.adbInstalled ? "Installed" : "Missing",
+                        color: settings.adbInstalled ? .green : .red,
+                        hint: "USB mode tunnels the TCP stream through the cable using `adb reverse`. Requires the `adb` command on the Mac."
+                    )
+                    if !settings.adbInstalled {
+                        Text("brew install android-platform-tools")
+                            .font(.system(size: 10, design: .monospaced))
+                            .padding(6)
+                            .background(Color.black.opacity(0.08))
+                            .cornerRadius(4)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .textSelection(.enabled)
+                    }
+                    StatusRow(
+                        title: "USB device",
+                        status: settings.usbDeviceConnected ? "Detected" : "Not detected",
+                        color: settings.usbDeviceConnected ? .green : .red,
+                        hint: "An Android device authorized for ADB and visible to your Mac. Plug in via USB-C and tap Allow on the device's USB debugging prompt."
+                    )
+                    StatusRow(
+                        title: "ADB reverse",
+                        status: settings.adbReverseConfigured ? "OK" : "Pending",
+                        color: settings.adbReverseConfigured ? .green : .orange,
+                        hint: "Whether `adb reverse tcp:\(settings.port) tcp:\(settings.port)` is currently configured."
+                    )
+                }
+            }
+        }
+
+        // Network Settings (Server Port)
+        FrostedGroupBox(title: "Network Settings", icon: "network") {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("Server Port")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    TextField("Port", value: $settings.port, format: .number)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 80)
+                        .disabled(settings.isRunning)
+                }
+
+                if settings.isRunning {
+                    Text("Stop server to change port")
+                        .font(.system(size: 10))
+                        .foregroundColor(.orange)
+                } else if settings.connectionMode == .wireless {
+                    Text("Changing the port invalidates existing pairings — re-scan the QR on each tablet.")
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                } else if settings.port != 54321 {
+                    Text("Custom port set — Android client must use the same port.")
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+    }
+
+    // MARK: - Tab 2: Display & Touch
+
+    @ViewBuilder
+    private var displayTabContent: some View {
+        // Display Configuration
+        FrostedGroupBox(title: "Display Configuration", icon: "display") {
+            VStack(alignment: .leading, spacing: 16) {
+                // Resolution
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("Resolution")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Toggle("Show all", isOn: $settings.showAllResolutions)
+                            .toggleStyle(.switch)
+                            .controlSize(.mini)
+                    }
+
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 0) {
+                            if settings.showAllResolutions {
+                                if !DisplaySettings.allResolutions.contains(settings.resolution) {
+                                    HStack(spacing: 6) {
+                                        Text("Custom")
+                                            .font(.system(size: 11, weight: .semibold))
+                                        Text("User defined")
+                                            .font(.system(size: 10))
+                                            .foregroundColor(.secondary)
+                                    }
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .background(Color.primary.opacity(0.03))
+
+                                    ResolutionRow(resolution: settings.resolution, isSelected: true) {}
+                                }
+                                ForEach(DisplaySettings.resolutionGroups) { group in
+                                    HStack(spacing: 6) {
+                                        Text(group.name)
+                                            .font(.system(size: 11, weight: .semibold))
+                                        Text(group.ratio)
+                                            .font(.system(size: 10))
+                                            .foregroundColor(.secondary)
+                                    }
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .background(Color.primary.opacity(0.03))
+
+                                    ForEach(group.resolutions, id: \.self) { res in
+                                        ResolutionRow(resolution: res, isSelected: settings.resolution == res) {
+                                            settings.resolution = res
+                                        }
+                                    }
+                                }
+                            } else {
+                                ForEach(DisplaySettings.commonResolutions, id: \.self) { res in
+                                    ResolutionRow(resolution: res, isSelected: settings.resolution == res) {
+                                        settings.resolution = res
+                                    }
+                                }
+                                if !DisplaySettings.commonResolutions.contains(settings.resolution) {
+                                    ResolutionRow(resolution: settings.resolution, isSelected: true) {}
+                                }
+                            }
+                        }
+                    }
+                    .frame(height: settings.showAllResolutions ? 180 : 140)
+                    .background(.ultraThinMaterial)
+                    .cornerRadius(8)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .strokeBorder(Color.primary.opacity(0.1), lineWidth: 1)
+                    )
+
+                    if settings.showAllResolutions {
+                        HStack(spacing: 8) {
+                            TextField("W", text: $customWidthText)
+                                .textFieldStyle(.roundedBorder)
+                                .frame(width: 70)
+                            Text("x")
+                                .foregroundColor(.secondary)
+                            TextField("H", text: $customHeightText)
+                                .textFieldStyle(.roundedBorder)
+                                .frame(width: 70)
+                            Button("Apply") {
+                                guard customResolutionValid,
+                                      let w = customWidthValue,
+                                      let h = customHeightValue else { return }
+                                settings.customWidth = w
+                                settings.customHeight = h
+                                settings.applyCustomResolution()
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                            .disabled(!customResolutionValid)
+                        }
+                        .onAppear {
+                            customWidthText = String(settings.customWidth)
+                            customHeightText = String(settings.customHeight)
+                        }
+                        if !customResolutionValid {
+                            Text("Supported range: 640–7680 × 480–4320")
+                                .font(.system(size: 10))
+                                .foregroundColor(.orange)
+                        }
+                    }
+                }
+
+                // HiDPI (Retina)
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("HiDPI (Retina)")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                        Text("Renders at 2× resolution for sharper text. Increases bandwidth.")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary.opacity(0.7))
+                    }
+                    Spacer()
+                    Toggle("", isOn: $settings.hiDPI)
+                        .toggleStyle(.switch)
+                        .controlSize(.mini)
+                }
+
+                // Rotation
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Rotation")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+
+                    HStack(spacing: 12) {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 4)
+                                .stroke(Color.accentColor.opacity(0.5), lineWidth: 1)
+                                .frame(width: 80, height: 50)
+                                .scaleEffect(x: settings.flipHorizontal ? -1 : 1, y: settings.flipVertical ? -1 : 1)
+                                .rotationEffect(.degrees(Double(settings.rotation)))
+
+                            Text(settings.rotation == 90 || settings.rotation == 270 ? "Portrait" : "Landscape")
+                                .font(.system(size: 8))
+                                .foregroundColor(.secondary)
+                        }
+                        .frame(width: 100, height: 80)
+
+                        VStack(spacing: 6) {
+                            HStack(spacing: 6) {
+                                RotationButton(degrees: 270, label: "270", isSelected: settings.rotation == 270) {
+                                    settings.rotation = 270
+                                }
+                                RotationButton(degrees: 0, label: "0", isSelected: settings.rotation == 0) {
+                                    settings.rotation = 0
+                                }
+                                RotationButton(degrees: 90, label: "90", isSelected: settings.rotation == 90) {
+                                    settings.rotation = 90
+                                }
+                            }
+                            HStack(spacing: 6) {
+                                Spacer()
+                                RotationButton(degrees: 180, label: "180", isSelected: settings.rotation == 180) {
+                                    settings.rotation = 180
+                                }
+                                Spacer()
+                            }
+                        }
+                    }
+
+                    if settings.rotation == 90 || settings.rotation == 270 {
+                        Text("Display will be in portrait mode")
+                            .font(.system(size: 10))
+                            .foregroundColor(.accentColor)
+                    }
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Flip Horizontally")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
+                                Text("Mirror left and right")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.secondary.opacity(0.7))
+                            }
+                            Spacer()
+                            Toggle("", isOn: $settings.flipHorizontal)
+                                .toggleStyle(.switch)
+                                .controlSize(.mini)
+                        }
+
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Flip Vertically")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
+                                Text("Mirror top and bottom")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.secondary.opacity(0.7))
+                            }
+                            Spacer()
+                            Toggle("", isOn: $settings.flipVertical)
+                                .toggleStyle(.switch)
+                                .controlSize(.mini)
+                        }
+                    }
+                    .padding(.top, 4)
+
+                    HStack {
+                        Spacer()
+                        Button(action: {
+                            NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.displays?displayArrangement")!)
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "rectangle.connected.to.line.below")
+                                Text("Arrange Displays…")
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                    }
+                    .padding(.top, 10)
+                }
+            }
+        }
+
+        // Refresh Rate
+        FrostedGroupBox(title: "Refresh Rate", icon: "speedometer") {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("Frame Rate")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Text("\(settings.refreshRate) Hz")
+                        .font(.system(size: 11, weight: .medium))
+                }
+
+                HStack(spacing: 6) {
+                    ForEach([30, 60, 90, 120], id: \.self) { rate in
+                        BitrateButton(
+                            label: "\(rate)",
+                            value: rate,
+                            currentValue: settings.refreshRate,
+                            disabled: false
+                        ) {
+                            settings.refreshRate = rate
+                        }
+                    }
+                }
+
+                HStack(spacing: 8) {
+                    Text("Custom")
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                    Slider(
+                        value: Binding(
+                            get: { Double(settings.refreshRate) },
+                            set: {
+                                let rate = Int($0.rounded())
+                                if rate != settings.refreshRate {
+                                    settings.refreshRate = rate
+                                }
+                            }
+                        ),
+                        in: 15...120,
+                        step: 1
+                    )
+                }
+
+                if settings.refreshRate >= 90 {
+                    Text("High refresh rate for smooth experience")
+                        .font(.system(size: 10))
+                        .foregroundColor(.green)
+                } else if ![30, 60].contains(settings.refreshRate) {
+                    Text("Custom rate — handy when a tablet shows artifacts above a certain FPS")
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+
+        // Touch Control
+        FrostedGroupBox(title: "Touch Control", icon: "hand.tap") {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Enable Touch Input")
+                            .font(.system(size: 12, weight: .medium))
+                        Text("Control Mac from tablet touch")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer()
+                    Toggle("", isOn: $settings.touchEnabled)
+                        .labelsHidden()
+                }
+
+                if !settings.touchEnabled {
+                    Text("Touch input is disabled — tablet is display-only")
+                        .font(.system(size: 10))
+                        .foregroundColor(.orange)
+                }
+            }
+        }
+    }
+
+    // MARK: - Tab 3: Stream & Quality
+
+    @ViewBuilder
+    private var streamTabContent: some View {
+        // Gaming Boost
+        FrostedGroupBox(title: "Gaming Boost", icon: settings.gamingBoost ? "bolt.fill" : "bolt") {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Enable Gaming Mode")
+                            .font(.system(size: 12, weight: .medium))
+                        Text("Optimized for competitive gaming")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer()
+                    Toggle("", isOn: $settings.gamingBoost)
+                        .labelsHidden()
+                }
+
+                if settings.gamingBoost {
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.green)
+                                .font(.system(size: 10))
+                            Text("High bitrate (1000 Mbps)")
+                                .font(.system(size: 11))
+                        }
+                        HStack(spacing: 4) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.green)
+                                .font(.system(size: 10))
+                            Text("120 Hz refresh rate")
+                                .font(.system(size: 11))
+                        }
+                        HStack(spacing: 4) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.green)
+                                .font(.system(size: 10))
+                            Text("Ultra-low latency encoding")
+                                .font(.system(size: 11))
+                        }
+                    }
+                    .padding(.leading, 4)
+                    .foregroundColor(.secondary)
+                }
+            }
+        }
+
+        // Streaming Settings
+        FrostedGroupBox(title: "Streaming Settings", icon: "antenna.radiowaves.left.and.right") {
+            VStack(alignment: .leading, spacing: 16) {
+                // Bitrate
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        Text("Bitrate")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Text("\(settings.effectiveBitrate) Mbps")
+                            .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                            .foregroundColor(.accentColor)
+                    }
+
+                    HStack(spacing: 6) {
+                        BitrateButton(label: "100", value: 100, currentValue: settings.bitrate, disabled: settings.gamingBoost) {
+                            settings.bitrate = 100
+                        }
+                        BitrateButton(label: "300", value: 300, currentValue: settings.bitrate, disabled: settings.gamingBoost) {
+                            settings.bitrate = 300
+                        }
+                        BitrateButton(label: "500", value: 500, currentValue: settings.bitrate, disabled: settings.gamingBoost) {
+                            settings.bitrate = 500
+                        }
+                        BitrateButton(label: "1000", value: 1000, currentValue: settings.bitrate, disabled: settings.gamingBoost) {
+                            settings.bitrate = 1000
+                        }
+                        BitrateButton(label: "2000", value: 2000, currentValue: settings.bitrate, disabled: settings.gamingBoost) {
+                            settings.bitrate = 2000
+                        }
+                    }
+
+                    HStack(spacing: 8) {
+                        Text("20")
+                            .font(.system(size: 9))
+                            .foregroundColor(.secondary)
+                        Slider(value: Binding(
+                            get: { Double(settings.bitrate) },
+                            set: { settings.bitrate = Int($0) }
+                        ), in: 20...5000, step: 10)
+                        .disabled(settings.gamingBoost)
+                        Text("5000")
+                            .font(.system(size: 9))
+                            .foregroundColor(.secondary)
+                    }
+
+                    if settings.gamingBoost {
+                        HStack(spacing: 4) {
+                            Image(systemName: "bolt.fill")
+                                .font(.system(size: 10))
+                            Text("Locked at 1000 Mbps in Gaming Boost")
+                                .font(.system(size: 10))
+                        }
+                        .foregroundColor(.orange)
+                    }
+                }
+
+                // Quality
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Quality Preset")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+
+                    Picker("", selection: $settings.quality) {
+                        Text("Ultra Low").tag("ultralow")
+                        Text("Low").tag("low")
+                        Text("Medium").tag("medium")
+                        Text("High").tag("high")
+                    }
+                    .pickerStyle(.segmented)
+                    .disabled(settings.gamingBoost)
+
+                    if settings.gamingBoost {
+                        Text("Quality locked to Ultra Low in Gaming Boost mode")
+                            .font(.system(size: 10))
+                            .foregroundColor(.orange)
+                    } else if settings.quality == "ultralow" {
+                        Text("Fastest encoding, lowest latency")
+                            .font(.system(size: 10))
+                            .foregroundColor(.green)
+                    }
+                }
+            }
+        }
+
+        // Live Performance
+        FrostedGroupBox(title: "Live Performance", icon: "speedometer") {
+            if settings.clientConnected {
+                HStack {
+                    VStack(alignment: .leading) {
+                        Text("FPS")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                        Text(String(format: "%.1f", settings.currentFPS))
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.green)
+                    }
+                    Spacer()
+                    VStack(alignment: .leading) {
+                        Text("Bitrate")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                        Text(String(format: "%.1f Mbps", settings.currentBitrate))
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.accentColor)
+                    }
+                }
+            } else {
+                Text("No active stream — connect a tablet to monitor live FPS and bitrate.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            }
+        }
+    }
+
+    // MARK: - Tab 4: System & Status
+
+    @ViewBuilder
+    private var systemTabContent: some View {
+        // Startup / headless behaviour
+        FrostedGroupBox(title: "Startup", icon: "power") {
+            VStack(alignment: .leading, spacing: 12) {
+                if #available(macOS 13.0, *) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Launch at Login")
+                                .font(.system(size: 12, weight: .medium))
+                            Text("Run SideKick in the background automatically after you log in.")
+                                .font(.system(size: 10))
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                        Toggle("", isOn: Binding(
+                            get: { daemonEnabled },
+                            set: { newValue in
+                                do {
+                                    if newValue {
+                                        try DaemonManager.shared.enable()
+                                    } else {
+                                        try DaemonManager.shared.disable()
+                                    }
+                                } catch {
+                                    print("Daemon toggle failed: \(error)")
+                                }
+                                daemonEnabled = DaemonManager.shared.isEnabled
+                            }
+                        ))
+                        .labelsHidden()
+                    }
+                    Divider()
+                }
+
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Auto-start streaming on launch")
+                            .font(.system(size: 12, weight: .medium))
+                        Text("Start the server automatically when the app opens, so the tablet can connect without touching the Mac.")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer()
+                    Toggle("", isOn: $settings.autoStartStreamingOnLaunch)
+                        .labelsHidden()
+                }
+
+                Divider()
+
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Startup mode")
+                            .font(.system(size: 12, weight: .medium))
+                        Text("Which connection mode to start in when auto-starting.")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer()
+                    Picker("", selection: $settings.startupMode) {
+                        Text("USB").tag(ConnectionMode.usb)
+                        Text("Wireless").tag(ConnectionMode.wireless)
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .frame(width: 150)
+                    .disabled(!settings.autoStartStreamingOnLaunch)
+                }
+            }
+        }
+        .onAppear {
+            if #available(macOS 13.0, *) {
+                daemonEnabled = DaemonManager.shared.isEnabled
+            }
+        }
+
+        // Status
+        FrostedGroupBox(title: "Status & Permissions", icon: "checkmark.circle") {
+            VStack(alignment: .leading, spacing: 12) {
+                StatusRow(title: "Virtual Display",
+                          status: settings.displayCreated ? "Active" : (settings.isRunning ? "Standby (on connect)" : "Inactive"),
+                          color: settings.displayCreated ? .green : (settings.isRunning ? .orange : .secondary),
+                          hint: "The macOS virtual display we render into. Created automatically only when a tablet connects, and removed when it disconnects so windows never get stranded on an unseen screen.")
+                StatusRow(title: "Client Connected",
+                          status: settings.clientConnected ? "Yes" : "No",
+                          color: settings.clientConnected ? .green : .secondary,
+                          hint: "Whether the Android client app currently has an active stream session.")
+                StatusRow(
+                    title: ProcessInfo.processInfo.operatingSystemVersion.majorVersion >= 26 ? "Screen & System Audio" : "Screen Recording",
+                    status: settings.hasScreenRecordingPermission ? "Granted" : "Required",
+                    color: settings.hasScreenRecordingPermission ? .green : .red,
+                    hint: "macOS privacy permission required to capture the virtual display. Grant in System Settings → Privacy & Security → Screen Recording."
+                )
+                StatusRow(title: "Accessibility",
+                          status: settings.hasAccessibilityPermission ? "Granted" : "Optional",
+                          color: settings.hasAccessibilityPermission ? .green : .orange,
+                          hint: "Optional permission. Required only if you want touch/tap input from the tablet to control the Mac. Streaming works without it.")
+                if settings.isRunning {
+                    StatusRow(title: "Capture Method",
+                              status: settings.captureMethod,
+                              color: settings.captureMethod.contains("fallback") ? .orange : .green,
+                              hint: "Which macOS API is currently capturing the virtual display. SCStream is the modern path; CGDisplayStream fallback activates if SCStream fails (e.g. on certain virtual display configs).")
+                }
+
+                // Mode-aware contextual rows
+                Divider().padding(.vertical, 4)
+                if settings.connectionMode == .usb {
+                    StatusRow(title: "ADB installed",
+                              status: settings.adbInstalled ? "Installed" : "Missing",
+                              color: settings.adbInstalled ? .green : .red,
+                              hint: "USB mode tunnels the TCP stream through the cable using `adb reverse`.")
+                    StatusRow(title: "ADB reverse",
+                              status: settings.adbReverseConfigured ? "OK" : "Pending",
+                              color: settings.adbReverseConfigured ? .green : .orange,
+                              hint: "Whether `adb reverse tcp:\(settings.port) tcp:\(settings.port)` is currently configured.")
+                    StatusRow(title: "USB device",
+                              status: settings.usbDeviceConnected ? "Detected" : "Not detected",
+                              color: settings.usbDeviceConnected ? .green : .red,
+                              hint: "An Android device authorized for ADB and visible to your Mac.")
+                } else {
+                    StatusRow(title: "WiFi",
+                              status: settings.wifiConnected ? "Connected" : "Disconnected",
+                              color: settings.wifiConnected ? .green : .red,
+                              hint: "Whether the Mac currently has a working internet route.")
+                    StatusRow(title: "Listening on",
+                              status: settings.listeningAddress.map { "\($0):\(settings.port)" } ?? "—",
+                              color: settings.listeningAddress != nil ? .green : .secondary,
+                              hint: "The LAN address the tablet must reach.")
+                }
+
+                if !settings.hasScreenRecordingPermission {
+                    screenRecordingWarningBanner
+                }
+
+                if !settings.displaysHaveSeparateSpaces {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundColor(.orange)
+                            Text("Tablet goes black in fullscreen apps")
+                                .font(.system(size: 12, weight: .medium))
+                        }
+                        Text("\"Displays have separate Spaces\" is turned off, so macOS blanks every other display — including the tablet — whenever an app enters fullscreen. Turn it on in System Settings → Desktop & Dock → Mission Control, then log out and back in.")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Button(action: {
+                            NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.Desktop-Settings.extension")!)
+                        }) {
+                            HStack {
+                                Image(systemName: "gear")
+                                Text("Open System Settings")
+                            }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                    }
+                    .padding(10)
+                    .background(Color.orange.opacity(0.1))
+                    .cornerRadius(8)
+                }
+
+                if !settings.hasAccessibilityPermission {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "hand.tap.fill")
+                                .foregroundColor(.blue)
+                            Text("Enable Touch Control")
+                                .font(.system(size: 12, weight: .medium))
+                        }
+                        Text("Control your Mac from your tablet.")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                        HStack(spacing: 8) {
+                            Button(action: {
+                                NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
+                            }) {
+                                HStack {
+                                    Image(systemName: "gear")
+                                    Text("Open Settings")
+                                }
+                                .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.small)
+
+                            Button(action: {
+                                (NSApp.delegate as? AppDelegate)?.resetPermissionsAndReprompt()
+                            }) {
+                                HStack {
+                                    Image(systemName: "arrow.triangle.2.circlepath")
+                                    Text("Reset & Prompt")
+                                }
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                        }
+                    }
+                    .padding(10)
+                    .background(Color.blue.opacity(0.08))
+                    .cornerRadius(8)
+                }
+            }
+        }
+
+        // Maintenance & Integrations (moved from Menu Bar into Settings)
+        FrostedGroupBox(title: "Maintenance & Integrations", icon: "wrench.and.screwdriver") {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 12) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Reset macOS Permissions (TCC)")
+                            .font(.system(size: 12, weight: .medium))
+                        Text("Clears stale Screen Recording & Accessibility entries via tccutil and triggers a fresh macOS prompt.")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer()
+                    Button(action: {
+                        (NSApp.delegate as? AppDelegate)?.resetPermissionsAndReprompt()
+                        tccResetFeedback = true
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                            tccResetFeedback = false
+                        }
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: tccResetFeedback ? "checkmark.circle.fill" : "arrow.triangle.2.circlepath")
+                            Text(tccResetFeedback ? "Reset Triggered" : "Reset TCC")
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+
+                if FileManager.default.fileExists(atPath: "/Applications/Vorssaint.app") {
+                    Divider()
+
+                    HStack(spacing: 12) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Vorssaint Command Bar")
+                                .font(.system(size: 12, weight: .medium))
+                            Text("Registers SideKick actions (Takeover, Toggle Stream, Settings) as Quick Links in Vorssaint.")
+                                .font(.system(size: 10))
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                        Button(action: {
+                            (NSApp.delegate as? AppDelegate)?.registerInVorssaint()
+                            vorssaintRegisteredFeedback = true
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                                vorssaintRegisteredFeedback = false
+                            }
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: vorssaintRegisteredFeedback ? "checkmark.circle.fill" : "bolt.horizontal.circle")
+                                Text(vorssaintRegisteredFeedback ? "Registered!" : "Register in Vorssaint")
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var screenRecordingWarningBanner: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundColor(.orange)
+                Text(ProcessInfo.processInfo.operatingSystemVersion.majorVersion >= 26 ? "Screen & System Audio Recording Required" : "Screen Recording Required")
+                    .font(.system(size: 12, weight: .medium))
+            }
+            Text(ProcessInfo.processInfo.operatingSystemVersion.majorVersion >= 26
+                ? "Required to capture the virtual display. Go to System Settings > Privacy & Security > Screen & System Audio Recording."
+                : "Required to capture the virtual display.")
+                .font(.system(size: 11))
+                .foregroundColor(.secondary)
+            HStack(spacing: 8) {
+                Button(action: {
+                    NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!)
+                }) {
+                    HStack {
+                        Image(systemName: "gear")
+                        Text("Open System Settings")
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+
+                Button(action: {
+                    (NSApp.delegate as? AppDelegate)?.resetPermissionsAndReprompt()
+                }) {
+                    HStack {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                        Text("Reset & Re-request")
+                    }
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .help("Automatically clears stale permission entries via tccutil and triggers a fresh macOS prompt.")
+            }
+        }
+        .padding(10)
+        .background(Color.orange.opacity(0.1))
+        .cornerRadius(8)
     }
 
     /// Restart the app by launching a new instance and terminating current one
@@ -1415,6 +1597,7 @@ class DisplaySettings: ObservableObject {
 
     var onToggleServer: (() -> Void)?
     var onRequestTakeover: (() -> Void)?
+    var onDisconnectTablet: (() -> Void)?
 
     init() {
         self.resolution = defaults.string(forKey: keyPrefix + "resolution") ?? "1920x1200"
@@ -1542,6 +1725,10 @@ class DisplaySettings: ObservableObject {
 
     func requestTakeover() {
         onRequestTakeover?()
+    }
+
+    func disconnectTablet() {
+        onDisconnectTablet?()
     }
 
     func resetToDefaults() {

@@ -680,6 +680,21 @@ class StreamingServer {
         sendDisplaySize()
     }
 
+    /// Notifies an already-connected client that the virtual display was rebuilt
+    /// mid-session (e.g. resolution, HiDPI, or refresh rate changed): re-runs codec
+    /// negotiation for the new display dimensions, sends the updated displayConfig +
+    /// desktopGeometry, and gates frames until the next keyframe.
+    func notifyDisplayRebuilt() {
+        networkQueue.async { [weak self] in
+            guard let self = self, self.connection != nil, !self.isStopped, self.connectionReady else { return }
+            self.waitingForSyncFrame = true
+            let codec: StreamCodec = self.clientIsAvcOnly ? .h264 : .hevc
+            self.onCodecNegotiated?(codec)
+            self.sendDisplaySize()
+            self.onKeyframeRequested?(true)
+        }
+    }
+
     func sendDisplaySize() {
         guard let connection = connection else { return }
 
@@ -1069,6 +1084,21 @@ class StreamingServer {
             totalFrameAgeNs = 0
             profiledFrameCount = 0
             lastStatsTime = now
+        }
+    }
+
+    /// Disconnects the currently connected tablet without stopping the listener,
+    /// so the server remains in standby ready for future connections.
+    func disconnectCurrentClient() {
+        networkQueue.async { [weak self] in
+            guard let self = self, let conn = self.connection else { return }
+            debugLog("Disconnecting current client while keeping server listening")
+            self.isReceiving = false
+            self.connectionReady = false
+            self.startupHeld = false
+            self.connection = nil
+            conn.cancel()
+            self.onClientDisconnected?()
         }
     }
 

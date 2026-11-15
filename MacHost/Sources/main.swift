@@ -6,6 +6,7 @@ import AppKit
 let cliArgs = Set(CommandLine.arguments.dropFirst())
 let cliMap: [String: String] = [
     "--takeover": "takeover",
+    "--disconnect": "disconnect",
     "--toggle": "toggle",
     "--start": "start",
     "--stop": "stop",
@@ -57,6 +58,11 @@ appTakeoverItem.keyEquivalentModifierMask = [.command, .shift]
 appTakeoverItem.target = delegate
 appMenu.addItem(appTakeoverItem)
 
+let appDisconnectItem = NSMenuItem(title: "Disconnect Tablet", action: #selector(AppDelegate.disconnectTablet), keyEquivalent: "D")
+appDisconnectItem.keyEquivalentModifierMask = [.command, .shift]
+appDisconnectItem.target = delegate
+appMenu.addItem(appDisconnectItem)
+
 let appSettingsItem = NSMenuItem(title: "Settings…", action: #selector(AppDelegate.showSettings), keyEquivalent: ",")
 appSettingsItem.target = delegate
 appMenu.addItem(appSettingsItem)
@@ -80,6 +86,11 @@ let streamTakeoverItem = NSMenuItem(title: "Connect Tablet Here (Takeover)", act
 streamTakeoverItem.keyEquivalentModifierMask = [.command, .shift]
 streamTakeoverItem.target = delegate
 streamMenu.addItem(streamTakeoverItem)
+
+let streamDisconnectItem = NSMenuItem(title: "Disconnect Tablet", action: #selector(AppDelegate.disconnectTablet), keyEquivalent: "D")
+streamDisconnectItem.keyEquivalentModifierMask = [.command, .shift]
+streamDisconnectItem.target = delegate
+streamMenu.addItem(streamDisconnectItem)
 
 let streamToggleItem = NSMenuItem(title: "Start / Stop Streaming", action: #selector(AppDelegate.toggleServerFromMenu), keyEquivalent: "t")
 streamToggleItem.target = delegate

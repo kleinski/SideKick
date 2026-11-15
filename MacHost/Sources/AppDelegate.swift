@@ -174,6 +174,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         switch action {
         case "takeover":
             requestTabletTakeover()
+        case "disconnect":
+            disconnectTablet()
         case "toggle":
             toggleServerFromMenu()
         case "start":
@@ -331,16 +333,23 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
             .store(in: &cancellables)
 
-        // Observer cho resolution changes — the virtual display is created at
-        // server start, so a new resolution (list row or custom Apply) needs a
-        // stop/start cycle to take effect, same as a connection-mode change.
-        // Without this, changing resolution mid-run silently did nothing.
+        // Observer cho resolution & HiDPI changes — rebuilds the virtual display
+        // and capture pipeline in-place while keeping the connected tablet session up.
         settings.$resolution
             .dropFirst()
             .removeDuplicates()
             .sink { [weak self] resolution in
                 guard let self = self, !self.isSwitchingProfile else { return }
                 self.restartRunningServer(reason: "Resolution changed to \(resolution)")
+            }
+            .store(in: &cancellables)
+
+        settings.$hiDPI
+            .dropFirst()
+            .removeDuplicates()
+            .sink { [weak self] hiDPI in
+                guard let self = self, !self.isSwitchingProfile else { return }
+                self.restartRunningServer(reason: "HiDPI changed to \(hiDPI)")
             }
             .store(in: &cancellables)
 
@@ -375,14 +384,28 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             .store(in: &cancellables)
     }
 
-    /// Stop-and-restart the server to rebuild the virtual display and capture
-    /// pipeline. No-op while stopped or when no client display is active yet.
+    /// Rebuilds the virtual display and capture pipeline in-place while keeping
+    /// the active client connection open (or triggers Takeover reconnect if needed).
     private func restartRunningServer(reason: String) {
         Task { @MainActor in
-            guard self.settings.isRunning, self.settings.displayCreated else { return }
-            debugLog("\(reason) — restarting server to rebuild virtual display")
-            self.stopServer()
-            await self.startServer()
+            guard self.settings.isRunning, self.settings.displayCreated, let server = self.streamingServer else { return }
+            debugLog("\(reason) — rebuilding virtual display in-place for connected tablet")
+            self.virtualDisplayManager?.saveDisplayPosition()
+            self.syncCurrentProfile()
+            do {
+                try await self.rebuildDisplay(for: server)
+                server.notifyDisplayRebuilt()
+                if !self.settings.clientConnected && self.settings.connectionMode == .wireless {
+                    self.requestTabletTakeover()
+                }
+            } catch {
+                debugLog("❌ In-place display rebuild failed (\(error)) — restarting server and reconnecting tablet")
+                self.stopServer()
+                await self.startServer()
+                if self.settings.connectionMode == .wireless {
+                    self.requestTabletTakeover()
+                }
+            }
         }
     }
 
@@ -453,6 +476,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    @objc func disconnectTablet() {
+        Task { @MainActor in
+            guard settings.isRunning, settings.clientConnected else { return }
+            debugLog("🔌 User requested Disconnect Tablet — keeping server listening on port \(settings.port)")
+            streamingServer?.disconnectCurrentClient()
+        }
+    }
+
     func setupSettingsWindow() {
         settingsWindow = SettingsWindowController(settings: settings)
 
@@ -468,6 +499,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         settings.onRequestTakeover = { [weak self] in
             self?.requestTabletTakeover()
+        }
+        settings.onDisconnectTablet = { [weak self] in
+            self?.disconnectTablet()
         }
     }
 
@@ -1524,7 +1558,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
 // MARK: - Menu bar quick actions
 
-extension AppDelegate: NSMenuDelegate {
+extension AppDelegate: NSMenuDelegate, NSMenuItemValidation {
+    func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        if menuItem.action == #selector(disconnectTablet) {
+            return settings.isRunning && settings.clientConnected
+        }
+        if menuItem.action == #selector(toggleServerFromMenu) {
+            return settings.isRunning || settings.hasScreenRecordingPermission
+        }
+        return true
+    }
+
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
 
@@ -1557,6 +1601,18 @@ extension AppDelegate: NSMenuDelegate {
         takeover.image = NSImage(systemSymbolName: "ipad.and.arrow.forward", accessibilityDescription: "Takeover")
         takeover.isEnabled = true
         menu.addItem(takeover)
+
+        // Disconnect Tablet — drops the active tablet session and virtual display while keeping the server listening.
+        let disconnect = NSMenuItem(
+            title: "Disconnect Tablet",
+            action: #selector(disconnectTablet),
+            keyEquivalent: "D"
+        )
+        disconnect.keyEquivalentModifierMask = [.command, .shift]
+        disconnect.target = self
+        disconnect.image = NSImage(systemSymbolName: "xmark.circle", accessibilityDescription: "Disconnect Tablet")
+        disconnect.isEnabled = settings.isRunning && settings.clientConnected
+        menu.addItem(disconnect)
 
         // Start / Stop
         let toggle = NSMenuItem(
@@ -1591,16 +1647,6 @@ extension AppDelegate: NSMenuDelegate {
         let settingsItem = NSMenuItem(title: "Settings…", action: #selector(showSettings), keyEquivalent: "s")
         settingsItem.target = self
         menu.addItem(settingsItem)
-
-        let resetPermsItem = NSMenuItem(title: "Reset macOS Permissions (TCC)", action: #selector(resetPermissionsAndReprompt), keyEquivalent: "")
-        resetPermsItem.target = self
-        menu.addItem(resetPermsItem)
-
-        if FileManager.default.fileExists(atPath: "/Applications/Vorssaint.app") {
-            let vorssaintItem = NSMenuItem(title: "Register Actions in Vorssaint", action: #selector(registerInVorssaint), keyEquivalent: "")
-            vorssaintItem.target = self
-            menu.addItem(vorssaintItem)
-        }
 
         menu.addItem(.separator())
         let quitMenuItem = NSMenuItem(title: "Quit SideKick", action: #selector(requestQuit(_:)), keyEquivalent: "q")
