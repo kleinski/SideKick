@@ -143,7 +143,7 @@ Download the latest **SideKick** builds from [**GitHub Releases (`kleinski/SideK
 - **Android (`SideKick-<version>-android-release.apk`):**
   - Download and install the `.apk` directly on your Android tablet, or install via ADB:
     ```bash
-    adb install -r SideKick-1.2.2-android-release.apk
+    adb install -r SideKick-1.2.3-android-release.apk
     ```
   - Because SideKick uses the package ID `com.sidekick.app`, it can be installed alongside the original Google Play `SideScreen` app without conflict.
 
