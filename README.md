@@ -29,13 +29,19 @@
 
 ## Origin & Attribution: Original `SideScreen` vs. `SideKick`
 
-**SideKick** is an independent fork of [**SideScreen**](https://github.com/tranvuongquocdat/SideScreen) (originally created by [**Tran Vuong Quoc Dat**](https://github.com/tranvuongquocdat) — [sidescreen.dev](https://sidescreen.dev)).
+**SideKick** is an independent fork of [**SideScreen**](https://github.com/tranvuongquocdat/SideScreen), originally created by [**Tran Vuong Quoc Dat**](https://github.com/tranvuongquocdat) ([sidescreen.dev](https://sidescreen.dev)).
 
-While the original **SideScreen** provides an outstanding ultra-low-latency H.265 streaming engine for connecting an Android tablet to a single Mac, **SideKick** extends and re-engineers the macOS host and Android client for **seamless wireless multi-Mac workflows** — allowing you to move one Android tablet effortlessly between two or more MacBooks.
+> **🙏 A Huge Thank You to Tran Vuong Quoc Dat**
+>
+> All credit for the foundational architecture — the ultra-low-latency hardware-accelerated H.265 streaming pipeline, the native macOS `CGVirtualDisplay` integration, the Android `MediaCodec` decoder, and predictive touch input — goes to **Tran Vuong Quoc Dat**.
+>
+> I am deeply grateful for his outstanding engineering work on **SideScreen** and for his generous decision to release the entire project as open source under the **[MIT License](LICENSE)**. Without his craftsmanship and commitment to open source, **SideKick** would not exist. If you enjoy using SideKick, please consider [supporting his original work](#acknowledgements--upstream-support)!
+
+While the original **SideScreen** provides an exceptional streaming engine for connecting an Android tablet to a single Mac, **SideKick** extends and re-engineers the macOS host and Android client specifically for **seamless wireless multi-Mac workflows** — allowing you to move one Android tablet effortlessly between two or more MacBooks.
 
 ### Comparison: What's from Original `SideScreen` vs. What's New in `SideKick`
 
-| Capability | Original `SideScreen` (Upstream) | `SideKick` Fork (Our Additions) |
+| Capability | Original `SideScreen` (Upstream) | `SideKick` Fork (My Additions) |
 |---|---|---|
 | **Core Streaming Engine** | Hardware-accelerated H.265 (`VideoToolbox` → `MediaCodec`), sub-16ms USB / <30ms WiFi latency | Inherited from upstream |
 | **Virtual Display & Input** | Native macOS `CGVirtualDisplay`, HiDPI (Retina 2×), 30–120 FPS, Gaming Boost, Touch Prediction | Inherited from upstream |
@@ -234,13 +240,22 @@ With **"Displays have separate Spaces"** turned off, macOS blanks every other di
 
 ---
 
-## Credits & Upstream Support
+## Acknowledgements & Upstream Support
 
-- **Original Project (`SideScreen`):** Created by [**Tran Vuong Quoc Dat**](https://github.com/tranvuongquocdat) ([tranvuongquocdat/SideScreen](https://github.com/tranvuongquocdat/SideScreen) · [sidescreen.dev](https://sidescreen.dev)).
-  If you want to support the original creator of SideScreen:
-  [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-FFDD00?style=flat-square&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/tranvuongqk)
-  [![GitHub Sponsors](https://img.shields.io/badge/GitHub%20Sponsors-EA4AAA?style=flat-square&logo=github-sponsors&logoColor=white)](https://github.com/sponsors/tranvuongquocdat)
-- **SideKick Multi-Mac Fork:** Maintained by [**kleinski**](https://github.com/kleinski) ([kleinski/SideKick](https://github.com/kleinski/SideKick)).
+Special thanks and my sincere gratitude go to **[Tran Vuong Quoc Dat](https://github.com/tranvuongquocdat)** for creating **[SideScreen](https://github.com/tranvuongquocdat/SideScreen)** ([sidescreen.dev](https://sidescreen.dev)) and generously publishing his work under the permissive **[MIT License](LICENSE)**. Building a reliable, sub-16ms virtual display and H.265 streaming stack across macOS and Android is a remarkable technical achievement, and sharing it freely with the community made it possible for me to build **SideKick** on top of his solid foundation.
+
+If **SideKick** or **SideScreen** is useful to your daily workflow, please consider supporting **Tran Vuong Quoc Dat** and his original project:
+
+<div align="center">
+
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/tranvuongqk)
+[![GitHub Sponsors](https://img.shields.io/badge/GitHub%20Sponsors-EA4AAA?style=for-the-badge&logo=github-sponsors&logoColor=white)](https://github.com/sponsors/tranvuongquocdat)
+[![VietQR](https://img.shields.io/badge/Vietnam-VietQR-DA251D?style=for-the-badge&logoColor=white)](https://sidescreen.dev/donate.html)
+
+</div>
+
+- **Original Project (`SideScreen`):** [**Tran Vuong Quoc Dat**](https://github.com/tranvuongquocdat) — [tranvuongquocdat/SideScreen](https://github.com/tranvuongquocdat/SideScreen) · [sidescreen.dev](https://sidescreen.dev)
+- **SideKick Multi-Mac Fork:** Maintained by [**kleinski**](https://github.com/kleinski) — [kleinski/SideKick](https://github.com/kleinski/SideKick)
 
 ---
 
