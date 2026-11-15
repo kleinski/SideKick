@@ -219,6 +219,7 @@ class MainActivity : AppCompatActivity() {
                         pairedMacsListContainer = binding.pairedMacsListContainer,
                         addMacScanButton = binding.wirelessAddMacScanButton,
                         addMacCodeButton = binding.wirelessAddMacCodeButton,
+                        connectedEncryptionStatus = binding.connectedEncryptionStatus,
                     ),
                 storage = pairedHostStorage,
                 discovery = lanHostDiscovery,
@@ -540,6 +541,8 @@ class MainActivity : AppCompatActivity() {
         updateResolutionOverlay()
         binding.resolutionText.append(" (demo)")
         binding.latencyText.text = "—"
+        binding.securityText.text = "Demo"
+        binding.securityText.setTextColor(Color.parseColor("#999999"))
         updateOverlayVisibility(prefs.showStatsOverlay)
         initializeDecoderForCurrentSurface()
 
@@ -749,6 +752,33 @@ class MainActivity : AppCompatActivity() {
         val closeButton = view.findViewById<View>(R.id.closeButton)
         val switchMacSection = view.findViewById<View>(R.id.switchMacSection)
         val switchMacButtonsContainer = view.findViewById<android.widget.LinearLayout>(R.id.switchMacButtonsContainer)
+        val securityBanner = view.findViewById<View>(R.id.connectionSecurityBanner)
+        val securityTitle = view.findViewById<TextView>(R.id.connectionSecurityTitle)
+        val securitySubtitle = view.findViewById<TextView>(R.id.connectionSecuritySubtitle)
+
+        val activeClient = streamClient
+        if (isConnected && !demoActive && activeClient != null && securityBanner != null) {
+            securityBanner.visibility = View.VISIBLE
+            val currentEntry = pairedHostStorage.load()
+            val macLabel = currentEntry?.let { "${it.macName} (${it.host})" } ?: "Mac"
+            if (activeClient.isWireless) {
+                if (activeClient.isEncrypted) {
+                    securityTitle?.text = "🔒 End-to-End Encrypted (AES-256-GCM)"
+                    securityTitle?.setTextColor(Color.parseColor("#4ade80"))
+                    securitySubtitle?.text = "Connected to $macLabel • Video & touch stream protected"
+                } else {
+                    securityTitle?.text = "🔓 Unencrypted Wireless Stream"
+                    securityTitle?.setTextColor(Color.parseColor("#FFB74D"))
+                    securitySubtitle?.text = "Connected to $macLabel • Encryption disabled on Mac"
+                }
+            } else {
+                securityTitle?.text = "🔌 Direct USB Connection"
+                securityTitle?.setTextColor(Color.parseColor("#4DD0E1"))
+                securitySubtitle?.text = "Local USB cable tunnel"
+            }
+        } else {
+            securityBanner?.visibility = View.GONE
+        }
 
         // Only show Disconnect when actually streaming. Otherwise the button is
         // a no-op and confuses users into clicking it twice.
@@ -1317,8 +1347,20 @@ class MainActivity : AppCompatActivity() {
             runOnUiThread {
                 isConnected = connected
                 reviewPrompter.onConnectionChanged(connected)
+                val encrypted = streamClient?.isEncrypted == true
+                val wireless = streamClient?.isWireless == true
                 if (connected) {
-                    updateStatus("Connected - Streaming active")
+                    if (wireless) {
+                        updateStatus(
+                            if (encrypted) {
+                                "Connected • 🔒 Encrypted (AES-256-GCM)"
+                            } else {
+                                "Connected • 🔓 Unencrypted"
+                            },
+                        )
+                    } else {
+                        updateStatus("Connected via USB - Streaming active")
+                    }
                 } else {
                     updateStatus("Disconnected")
                 }
@@ -1328,6 +1370,18 @@ class MainActivity : AppCompatActivity() {
                     if (connected) android.R.color.holo_green_light else android.R.color.holo_red_light,
                 )
                 if (connected) {
+                    if (wireless) {
+                        if (encrypted) {
+                            binding.securityText.text = "🔒 AES-256"
+                            binding.securityText.setTextColor(Color.parseColor("#4CAF50"))
+                        } else {
+                            binding.securityText.text = "🔓 Off"
+                            binding.securityText.setTextColor(Color.parseColor("#FF9800"))
+                        }
+                    } else {
+                        binding.securityText.text = "🔌 USB"
+                        binding.securityText.setTextColor(Color.parseColor("#00BCD4"))
+                    }
                     startPingTimer()
                     stopChecklistUpdates()
                     enableFullscreenMode()
@@ -1341,10 +1395,24 @@ class MainActivity : AppCompatActivity() {
                     // a stale CONNECTED transition that hides the PAIRED_IDLE UI).
                     if (prefs.connectionMode == ConnectionMode.WIRELESS) {
                         val entry = pairedHostStorage.load()
+                        val macName = entry?.macName ?: "Mac"
                         wirelessController.onConnectSuccess(
-                            entry?.macName ?: "Mac",
+                            macName,
                             entry?.host ?: "—",
+                            encrypted = encrypted,
                         )
+                        val encToast =
+                            if (encrypted) {
+                                "🔒 Encrypted (AES-256-GCM)"
+                            } else {
+                                "🔓 Unencrypted"
+                            }
+                        android.widget.Toast
+                            .makeText(
+                                this,
+                                "Connected to $macName • $encToast",
+                                android.widget.Toast.LENGTH_SHORT,
+                            ).show()
                     }
                 } else {
                     stopPingTimer()
@@ -1606,6 +1674,8 @@ class MainActivity : AppCompatActivity() {
                         )
 
                         if (connected) {
+                            binding.securityText.text = "🔌 USB"
+                            binding.securityText.setTextColor(Color.parseColor("#00BCD4"))
                             // Start periodic ping for latency measurement
                             startPingTimer()
 

@@ -794,7 +794,7 @@ struct SettingsView: View {
 
         // Touch Control
         FrostedGroupBox(title: "Touch Control", icon: "hand.tap") {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 12) {
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Enable Touch Input")
@@ -812,6 +812,58 @@ struct SettingsView: View {
                     Text("Touch input is disabled — tablet is display-only")
                         .font(.system(size: 10))
                         .foregroundColor(.orange)
+                }
+
+                Divider()
+
+                HStack(spacing: 12) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 6) {
+                            Image(systemName: settings.hasAccessibilityPermission ? "checkmark.shield.fill" : "exclamationmark.triangle.fill")
+                                .foregroundColor(settings.hasAccessibilityPermission ? .green : .orange)
+                                .font(.system(size: 11))
+                            Text("Accessibility Permission")
+                                .font(.system(size: 12, weight: .medium))
+                            Text(settings.hasAccessibilityPermission ? "Granted" : "Required")
+                                .font(.system(size: 10, weight: .semibold))
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background((settings.hasAccessibilityPermission ? Color.green : Color.orange).opacity(0.15))
+                                .foregroundColor(settings.hasAccessibilityPermission ? .green : .orange)
+                                .cornerRadius(4)
+                        }
+                        Text("Required for cursor & touch injection. If touch stops working after an app update, click Reset & Prompt.")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer()
+                    HStack(spacing: 8) {
+                        Button(action: {
+                            NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "gear")
+                                Text("Open Settings")
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+
+                        Button(action: {
+                            (NSApp.delegate as? AppDelegate)?.resetAccessibilityPermissionAndReprompt()
+                            tccResetFeedback = true
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                                tccResetFeedback = false
+                            }
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: tccResetFeedback ? "checkmark.circle.fill" : "arrow.triangle.2.circlepath")
+                                Text(tccResetFeedback ? "Reset Triggered" : "Reset & Prompt")
+                            }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                    }
                 }
             }
         }
@@ -1172,7 +1224,7 @@ struct SettingsView: View {
                             .controlSize(.small)
 
                             Button(action: {
-                                (NSApp.delegate as? AppDelegate)?.resetPermissionsAndReprompt()
+                                (NSApp.delegate as? AppDelegate)?.resetAccessibilityPermissionAndReprompt()
                             }) {
                                 HStack {
                                     Image(systemName: "arrow.triangle.2.circlepath")

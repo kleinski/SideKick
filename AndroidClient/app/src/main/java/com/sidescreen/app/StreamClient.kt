@@ -51,6 +51,14 @@ class StreamClient(
     @Volatile var codecNegotiated = false
         private set
 
+    /** True when connected over Wi-Fi rather than USB. */
+    @Volatile var isWireless = false
+        private set
+
+    /** True when post-handshake traffic is encrypted with AES-256-GCM ("SSWE" status OK). */
+    @Volatile var isEncrypted = false
+        private set
+
     private var bytesReceived = 0L
     private var framesReceived = 0L
     private var diagFrameCount = 0L
@@ -131,6 +139,8 @@ class StreamClient(
                 outputStream = java.io.DataOutputStream(socket?.getOutputStream())
                 streamCodecIsHevc = true
                 codecNegotiated = false
+                isWireless = false
+                isEncrypted = false
                 prepareAdvertisements()
                 advertiseAvcOnlyIfNeeded() // MUST precede type 8: type 8 can trigger the server's early protocol finish
                 advertiseDecoderLimits() // Also before type 8, for the same reason
@@ -391,6 +401,8 @@ class StreamClient(
                 }
                 streamCodecIsHevc = true
                 codecNegotiated = false
+                isWireless = true
+                isEncrypted = encryptedStream
                 prepareAdvertisements()
                 advertiseAvcOnlyIfNeeded() // MUST precede type 8: type 8 can trigger the server's early protocol finish
                 advertiseDecoderLimits() // Also before type 8, for the same reason

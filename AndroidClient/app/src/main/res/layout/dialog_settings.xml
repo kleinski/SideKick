@@ -35,7 +35,37 @@
             android:textSize="28sp"
             android:textStyle="bold"
             android:gravity="center"
-            android:layout_marginBottom="32dp" />
+            android:layout_marginBottom="20dp" />
+
+        <!-- Connection Security Status Banner -->
+        <LinearLayout
+            android:id="@+id/connectionSecurityBanner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/settings_item_bg"
+            android:padding="14dp"
+            android:layout_marginBottom="16dp"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/connectionSecurityTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="🔒 End-to-End Encrypted (AES-256-GCM)"
+                android:textColor="#4ade80"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/connectionSecuritySubtitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Video &amp; touch stream encrypted"
+                android:textColor="#AAAAAA"
+                android:textSize="12sp"
+                android:layout_marginTop="2dp" />
+        </LinearLayout>
 
         <!-- Show Stats Toggle -->
         <LinearLayout
@@ -62,7 +92,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="FPS, bitrate, resolution"
+                    android:text="FPS, bitrate, resolution, security"
                     android:textColor="#999999"
                     android:textSize="13sp" />
             </LinearLayout>

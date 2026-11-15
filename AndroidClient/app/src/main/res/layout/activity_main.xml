@@ -116,7 +116,8 @@
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:orientation="vertical">
+                android:orientation="vertical"
+                android:layout_marginEnd="16dp">
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -130,6 +131,27 @@
                     android:text="--"
                     android:textColor="#E91E63"
                     android:textSize="16sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <!-- Security / Encryption Indicator -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="SECURITY"
+                    android:textColor="#88FFFFFF"
+                    android:textSize="10sp" />
+                <TextView
+                    android:id="@+id/securityText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="--"
+                    android:textColor="#4CAF50"
+                    android:textSize="14sp"
                     android:textStyle="bold" />
             </LinearLayout>
 
@@ -619,6 +641,17 @@
                         android:text="—"
                         android:textColor="#888888"
                         android:textSize="12sp"
+                        android:gravity="center"
+                        android:layout_marginBottom="6dp" />
+
+                    <TextView
+                        android:id="@+id/connectedEncryptionStatus"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="🔒 End-to-End Encrypted (AES-256-GCM)"
+                        android:textColor="#4ade80"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
                         android:gravity="center"
                         android:layout_marginBottom="16dp" />
 

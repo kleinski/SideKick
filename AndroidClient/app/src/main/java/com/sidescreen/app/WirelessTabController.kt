@@ -79,6 +79,7 @@ class WirelessTabController(
         val pairedMacsListContainer: LinearLayout? = null,
         val addMacScanButton: Button? = null,
         val addMacCodeButton: Button? = null,
+        val connectedEncryptionStatus: TextView? = null,
     )
 
     enum class State { FIRST_TIME, CONNECTING, CONNECTED, PAIRED_IDLE, REPAIR_NEEDED, PERM_DENIED }
@@ -492,9 +493,19 @@ class WirelessTabController(
     fun onConnectSuccess(
         macName: String,
         ip: String,
+        encrypted: Boolean = true,
     ) {
         views.connectedMacName.text = macName
         views.connectedMacIp.text = ip
+        views.connectedEncryptionStatus?.apply {
+            if (encrypted) {
+                text = "🔒 End-to-End Encrypted (AES-256-GCM)"
+                setTextColor(Color.parseColor("#4ade80"))
+            } else {
+                text = "🔓 Unencrypted (Encryption off on Mac)"
+                setTextColor(Color.parseColor("#FFB74D"))
+            }
+        }
         transition(State.CONNECTED)
     }
 

@@ -199,6 +199,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         settings.wifiConnected = StatusDetector.wifiReachable()
         settings.listeningAddress = LANAddressResolver.primaryIPv4()
 
+        let axTrusted = AXIsProcessTrusted()
+        if axTrusted != settings.hasAccessibilityPermission {
+            settings.hasAccessibilityPermission = axTrusted
+            if axTrusted {
+                accessibilityWarningShown = false
+            }
+        }
+
         // "Displays have separate Spaces" off → any fullscreen app blanks the
         // virtual display (#50). Nothing we can do about it from capture side;
         // surface it so the user knows why the tablet went black.
@@ -649,10 +657,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc func resetPermissionsAndReprompt() {
         Self.runTCCReset(service: "ScreenCapture")
         Self.runTCCReset(service: "Accessibility")
+        accessibilityWarningShown = false
         _ = CGRequestScreenCaptureAccess()
         Task { @MainActor in
             self.promptAccessibilityPermission()
             await self.checkPermissions()
+        }
+    }
+
+    @objc func resetAccessibilityPermissionAndReprompt() {
+        Self.runTCCReset(service: "Accessibility")
+        accessibilityWarningShown = false
+        Task { @MainActor in
+            self.promptAccessibilityPermission()
+            await self.checkAccessibilityPermission()
         }
     }
 
@@ -1188,7 +1206,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if !AXIsProcessTrusted() {
             if !accessibilityWarningShown {
                 accessibilityWarningShown = true
-                print("⚠️  Accessibility not granted - touch ignored")
+                debugLog("⚠️ Accessibility not granted - touch ignored")
                 Task { @MainActor in
                     settings.hasAccessibilityPermission = false
                 }
