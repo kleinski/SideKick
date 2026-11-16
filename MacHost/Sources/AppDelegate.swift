@@ -51,6 +51,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var virtualDisplayManager: VirtualDisplayManager?
     var settings = DisplaySettings()
     var settingsWindow: SettingsWindowController?
+    var popoverController: MenuBarPopoverController?
+    var contextMenu: NSMenu?
     var statusItem: NSStatusItem?
     let pairedDeviceStore = PairedDeviceStore()
     let deviceProfileStore = DeviceProfileStore()
@@ -438,14 +440,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         if let button = statusItem?.button {
             button.image = NSImage(systemSymbolName: "display.2", accessibilityDescription: "SideKick")
+            button.target = self
+            button.action = #selector(statusBarButtonClicked(_:))
+            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         }
 
-        // Items are rebuilt on every open (menuNeedsUpdate) so the menu always
-        // reflects live server/connection state.
+        // Context menu used for right-click / secondary click.
         let menu = NSMenu()
         menu.delegate = self
         menu.autoenablesItems = false
-        statusItem?.menu = menu
+        self.contextMenu = menu
 
         // Dim the menu bar icon while the server is stopped — at-a-glance
         // state without opening the menu.
@@ -455,6 +459,23 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.statusItem?.button?.appearsDisabled = !running
             }
             .store(in: &cancellables)
+    }
+
+    @objc func statusBarButtonClicked(_ sender: NSStatusBarButton) {
+        guard let event = NSApp.currentEvent else {
+            togglePopover(sender)
+            return
+        }
+
+        if event.type == .rightMouseUp || (event.type == .leftMouseUp && event.modifierFlags.contains(.control)) {
+            popoverController?.close()
+            if let contextMenu = contextMenu {
+                contextMenu.update()
+                contextMenu.popUp(positioning: nil, at: NSPoint(x: 0, y: sender.bounds.height + 4), in: sender)
+            }
+        } else {
+            togglePopover(sender)
+        }
     }
 
     @objc func toggleServerFromMenu() {
@@ -527,6 +548,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         settings.onDisconnectTablet = { [weak self] in
             self?.disconnectTablet()
         }
+
+        // Menu bar popover with quick controls
+        popoverController = MenuBarPopoverController(settings: settings) { [weak self] in
+            self?.showSettings()
+        }
+    }
+
+    @objc func togglePopover(_ sender: Any? = nil) {
+        guard let button = statusItem?.button else { return }
+        popoverController?.toggle(relativeTo: button)
     }
 
     @objc func showSettings() {
@@ -1676,6 +1707,16 @@ extension AppDelegate: NSMenuDelegate, NSMenuItemValidation {
         let modeItem = NSMenuItem(title: "Connection Mode", action: nil, keyEquivalent: "")
         modeItem.submenu = modeMenu
         menu.addItem(modeItem)
+
+        let popoverItem = NSMenuItem(
+            title: "Quick Controls Popover",
+            action: #selector(togglePopover),
+            keyEquivalent: "W"
+        )
+        popoverItem.keyEquivalentModifierMask = [.command, .shift]
+        popoverItem.target = self
+        popoverItem.image = NSImage(systemSymbolName: "slider.horizontal.3", accessibilityDescription: "Quick Controls")
+        menu.addItem(popoverItem)
 
         menu.addItem(.separator())
 

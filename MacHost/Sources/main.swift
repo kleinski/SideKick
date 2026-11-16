@@ -95,6 +95,11 @@ let streamToggleItem = NSMenuItem(title: "Start / Stop Streaming", action: #sele
 streamToggleItem.target = delegate
 streamMenu.addItem(streamToggleItem)
 
+let streamPopoverItem = NSMenuItem(title: "Toggle Menu Bar Controls", action: #selector(AppDelegate.togglePopover), keyEquivalent: "W")
+streamPopoverItem.keyEquivalentModifierMask = [.command, .shift]
+streamPopoverItem.target = delegate
+streamMenu.addItem(streamPopoverItem)
+
 streamMenu.addItem(NSMenuItem.separator())
 
 let streamWirelessItem = NSMenuItem(title: "Switch to Wireless Mode", action: #selector(AppDelegate.selectWirelessMode), keyEquivalent: "")

@@ -17,6 +17,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+<a id="1.2.5"></a>
+## [1.2.5] - 2026-11-16 — Menu Bar Popover Quick Controls
+
+### Added
+- **Native macOS Menu Bar Popover (`NSPopover`)**: Clicking the SideKick menu bar icon (or pressing `⌘⇧W`) opens a rich quick-control popover attached directly to the menu bar icon.
+  - Live connection status indicator (connected, waiting, stopped), tablet device name, mode, and port.
+  - Real-time performance metrics (FPS, Bitrate in Mbit/s, virtual display resolution).
+  - Primary action buttons: Start/Stop Streaming, Multi-Mac Takeover (`⌘⇧T`), and Disconnect Tablet (`⌘⇧D`).
+  - Quick toggles: USB vs. Wi-Fi mode selector, Touch Control toggle (with accessibility warning indicator), and AES-256-GCM wireless encryption toggle.
+  - Quick shortcuts for SideKick Settings (`⌘,`) and Quit SideKick (`⌘Q`).
+- **Context Menu on Secondary Click**: Right-clicking or Control-clicking the menu bar icon presents the full classic dropdown menu.
+
+---
+
 <a id="1.1.1"></a>
 ## [1.1.1] - 2026-11-07 — Sharper picture, smoother bitrate changes
 
