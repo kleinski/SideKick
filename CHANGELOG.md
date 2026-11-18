@@ -17,6 +17,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+<a id="1.2.6"></a>
+## [1.2.6] - 2026-11-18 — Tablet-to-Mac Keyboard Forwarding
+
+### Added
+- **Full Tablet-to-Mac Keyboard Input Forwarding:**
+  - **Hardware Keyboards:** Bluetooth, USB, and keyboard-cover keys (including modifiers `⌘`, `⌥`, `⌃`, `⇧`, navigation keys, function keys `F1–F12`, and international characters) are forwarded from Android to macOS via `CGEvent`.
+  - **On-Screen Soft Keyboard:** Added a floating keyboard icon next to the settings icon on Android (`floatingButtonsContainer`), using `KeyboardInputProxyView` (`AppCompatEditText` + `WindowInsetsController`) to open the soft keyboard without resizing or obscuring the streamed Mac screen.
+- **Mac-Side Permission Control:**
+  - Added **Enable Keyboard Input** in *Settings → Touch & Keyboard Control* and **Keyboard Control** in the Menu Bar Popover.
+  - When disabled on the Mac, incoming keyboard events are blocked server-side and the Android client is notified live (`WireMessage.keyboardPermission`), dimming the keyboard icon and showing a status toast if tapped.
+
+---
+
 <a id="1.2.5"></a>
 ## [1.2.5] - 2026-11-16 — Menu Bar Popover Quick Controls
 

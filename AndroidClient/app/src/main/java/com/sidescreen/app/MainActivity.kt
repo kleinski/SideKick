@@ -18,6 +18,7 @@ import android.os.Handler
 import android.os.Looper
 import android.os.PowerManager
 import android.provider.Settings
+import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.Surface
 import android.view.SurfaceHolder
@@ -28,9 +29,12 @@ import android.view.WindowInsets
 import android.view.WindowInsetsController
 import android.view.WindowManager
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.constraintlayout.widget.ConstraintSet
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.slider.Slider
@@ -100,6 +104,7 @@ class MainActivity : AppCompatActivity() {
 
     /** True while video is on screen — a real session or the demo. Drives the streaming chrome. */
     private val isStreamingUi get() = isConnected || demoActive
+    private var keyboardAllowedOnMac = true
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -570,7 +575,8 @@ class MainActivity : AppCompatActivity() {
         displayWidth = 0
         displayHeight = 0
 
-        binding.settingsButton.visibility = View.GONE
+        hideSoftKeyboard()
+        binding.floatingButtonsContainer.visibility = View.GONE
         binding.statusBar.visibility = View.GONE
         binding.settingsPanel.visibility = View.VISIBLE
         setSurfaceAspect(null)
@@ -969,7 +975,44 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateSettingsButtonOpacity(opacity: Float) {
-        binding.settingsButton.alpha = opacity
+        binding.floatingButtonsContainer.alpha = opacity
+    }
+
+    private fun updateKeyboardButtonState() {
+        binding.keyboardButton.alpha = if (keyboardAllowedOnMac) 1.0f else 0.4f
+        if (!keyboardAllowedOnMac) {
+            hideSoftKeyboard()
+        }
+    }
+
+    private fun toggleSoftKeyboard() {
+        if (!keyboardAllowedOnMac) {
+            Toast.makeText(this, "Keyboard control is disabled on Mac", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val imeVisible = ViewCompat.getRootWindowInsets(binding.root)?.isVisible(WindowInsetsCompat.Type.ime()) == true
+        if (imeVisible) {
+            hideSoftKeyboard()
+        } else {
+            val proxy = binding.keyboardInputProxy
+            proxy.visibility = View.VISIBLE
+            proxy.requestFocus()
+            proxy.post {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    window.insetsController?.show(WindowInsets.Type.ime())
+                }
+                val imm = getSystemService(android.view.inputmethod.InputMethodManager::class.java)
+                imm?.showSoftInput(proxy, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+            }
+        }
+    }
+
+    private fun hideSoftKeyboard() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            window.insetsController?.hide(WindowInsets.Type.ime())
+        }
+        val imm = getSystemService(android.view.inputmethod.InputMethodManager::class.java)
+        imm?.hideSoftInputFromWindow(binding.keyboardInputProxy.windowToken, 0)
     }
 
     private fun setupSettingsButton() {
@@ -977,6 +1020,24 @@ class MainActivity : AppCompatActivity() {
         // Position can be changed via corner buttons in settings
         binding.settingsButton.setOnClickListener {
             showSettingsDialog()
+        }
+
+        binding.keyboardButton.setOnClickListener {
+            toggleSoftKeyboard()
+        }
+
+        binding.keyboardInputProxy.onTextCommitted = { text ->
+            if (isConnected && keyboardAllowedOnMac) {
+                streamClient?.sendKeyboardText(text)
+            }
+        }
+        binding.keyboardInputProxy.onBackspace = { count ->
+            if (isConnected && keyboardAllowedOnMac) {
+                streamClient?.sendKeyboardBackspace(count)
+            }
+        }
+        binding.keyboardInputProxy.onKeyEventForwarded = { event ->
+            handleForwardedKeyEvent(event)
         }
 
         // Escape hatch for the hidden icon: the back gesture briefly reveals it
@@ -987,7 +1048,7 @@ class MainActivity : AppCompatActivity() {
             object : androidx.activity.OnBackPressedCallback(true) {
                 override fun handleOnBackPressed() {
                     if (isStreamingUi && prefs.hideSettingsButton &&
-                        binding.settingsButton.visibility != View.VISIBLE
+                        binding.floatingButtonsContainer.visibility != View.VISIBLE
                     ) {
                         revealSettingsButtonTemporarily()
                     } else if (demoActive) {
@@ -1002,22 +1063,24 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    /** Streaming-time visibility of the settings icon, honoring the hide preference. */
+    /** Streaming-time visibility of the settings & keyboard icons, honoring the hide preference. */
     private fun applySettingsButtonVisibility() {
-        binding.settingsButton.visibility =
+        binding.floatingButtonsContainer.visibility =
             if (prefs.hideSettingsButton) View.GONE else View.VISIBLE
+        binding.keyboardButton.visibility = if (isConnected) View.VISIBLE else View.GONE
+        updateKeyboardButtonState()
     }
 
     private val revealHandler = Handler(Looper.getMainLooper())
     private val hideSettingsButtonRunnable =
         Runnable {
             if (isStreamingUi && prefs.hideSettingsButton) {
-                binding.settingsButton.visibility = View.GONE
+                binding.floatingButtonsContainer.visibility = View.GONE
             }
         }
 
     private fun revealSettingsButtonTemporarily() {
-        binding.settingsButton.visibility = View.VISIBLE
+        binding.floatingButtonsContainer.visibility = View.VISIBLE
         revealHandler.removeCallbacks(hideSettingsButtonRunnable)
         revealHandler.postDelayed(hideSettingsButtonRunnable, 5_000L)
     }
@@ -1027,7 +1090,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * Use ConstraintSet to position settings button - most reliable method
+     * Use ConstraintSet to position floating buttons container - most reliable method
      * Works correctly with orientation changes
      * Supports 8 positions: 4 corners + 4 edges
      */
@@ -1036,7 +1099,7 @@ class MainActivity : AppCompatActivity() {
         val constraintSet = ConstraintSet()
         constraintSet.clone(constraintLayout)
 
-        val buttonId = binding.settingsButton.id
+        val buttonId = binding.floatingButtonsContainer.id
         val marginDp = (24 * resources.displayMetrics.density).toInt()
 
         // Clear all constraints first
@@ -1139,8 +1202,8 @@ class MainActivity : AppCompatActivity() {
         }
 
         // Reset any absolute positioning that might have been set
-        binding.settingsButton.translationX = 0f
-        binding.settingsButton.translationY = 0f
+        binding.floatingButtonsContainer.translationX = 0f
+        binding.floatingButtonsContainer.translationY = 0f
 
         constraintSet.applyTo(constraintLayout)
     }
@@ -1343,6 +1406,13 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        streamClient?.onKeyboardPermissionChanged = { allowed ->
+            runOnUiThread {
+                keyboardAllowedOnMac = allowed
+                updateKeyboardButtonState()
+            }
+        }
+
         streamClient?.onConnectionStatus = { connected ->
             runOnUiThread {
                 isConnected = connected
@@ -1419,7 +1489,8 @@ class MainActivity : AppCompatActivity() {
                     disableFullscreenMode()
                     resetOrientationToSensor()
                     binding.settingsPanel.visibility = View.VISIBLE
-                    binding.settingsButton.visibility = View.GONE
+                    hideSoftKeyboard()
+        binding.floatingButtonsContainer.visibility = View.GONE
                     binding.statusBar.visibility = View.GONE
                     val mode = prefs.connectionMode
                     val willTransition = mode == ConnectionMode.WIRELESS
@@ -1649,6 +1720,13 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
 
+                streamClient?.onKeyboardPermissionChanged = { allowed ->
+                    runOnUiThread {
+                        keyboardAllowedOnMac = allowed
+                        updateKeyboardButtonState()
+                    }
+                }
+
                 streamClient?.onConnectionStatus = { connected ->
                     runOnUiThread {
                         // Update connection state flag
@@ -1700,7 +1778,8 @@ class MainActivity : AppCompatActivity() {
                             resetOrientationToSensor()
 
                             binding.settingsPanel.visibility = View.VISIBLE
-                            binding.settingsButton.visibility = View.GONE
+                            hideSoftKeyboard()
+        binding.floatingButtonsContainer.visibility = View.GONE
                             binding.statusBar.visibility = View.GONE
 
                             // Restart checklist updates immediately
@@ -2101,5 +2180,67 @@ class MainActivity : AppCompatActivity() {
                 // ignore
             }
         }
+    }
+
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (isConnected && binding.settingsPanel.visibility != View.VISIBLE) {
+            if (handleForwardedKeyEvent(event)) {
+                return true
+            }
+        }
+        return super.dispatchKeyEvent(event)
+    }
+
+    private fun handleForwardedKeyEvent(event: KeyEvent): Boolean {
+        if (!keyboardAllowedOnMac) return false
+
+        when (event.keyCode) {
+            KeyEvent.KEYCODE_BACK,
+            KeyEvent.KEYCODE_HOME,
+            KeyEvent.KEYCODE_APP_SWITCH,
+            KeyEvent.KEYCODE_POWER,
+            KeyEvent.KEYCODE_VOLUME_UP,
+            KeyEvent.KEYCODE_VOLUME_DOWN,
+            KeyEvent.KEYCODE_VOLUME_MUTE,
+            -> return false
+        }
+
+        if (event.action != KeyEvent.ACTION_DOWN && event.action != KeyEvent.ACTION_UP) {
+            return false
+        }
+
+        var mods = 0
+        if (event.isShiftPressed) mods = mods or 1
+        if (event.isCtrlPressed) mods = mods or 2
+        if (event.isAltPressed) mods = mods or 4
+        if (event.isMetaPressed) mods = mods or 8
+
+        val hasCommandMods = (mods and (2 or 4 or 8)) != 0
+        val unicode = event.unicodeChar
+        val isSpecialControlKey =
+            when (event.keyCode) {
+                KeyEvent.KEYCODE_ENTER,
+                KeyEvent.KEYCODE_NUMPAD_ENTER,
+                KeyEvent.KEYCODE_DEL,
+                KeyEvent.KEYCODE_FORWARD_DEL,
+                KeyEvent.KEYCODE_TAB,
+                KeyEvent.KEYCODE_ESCAPE,
+                -> true
+                else -> false
+            }
+
+        if (!hasCommandMods && !isSpecialControlKey && unicode != 0) {
+            if (event.action == KeyEvent.ACTION_DOWN) {
+                streamClient?.sendKeyboardText(String(Character.toChars(unicode)))
+            }
+            return true
+        }
+
+        streamClient?.sendKeyEvent(
+            keyCode = event.keyCode,
+            isDown = event.action == KeyEvent.ACTION_DOWN,
+            modifiers = mods,
+        )
+        return true
     }
 }

@@ -332,6 +332,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
             .store(in: &cancellables)
 
+        // Propagate keyboard enable/disable to streaming server and connected tablet.
+        settings.$keyboardEnabled
+            .dropFirst()
+            .sink { [weak self] enabled in
+                self?.streamingServer?.setKeyboardEnabled(enabled)
+            }
+            .store(in: &cancellables)
+
         // Observer cho connection mode changes — restart server with new auth/ADB policy.
         settings.$connectionMode
             .dropFirst()
@@ -851,6 +859,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             // Setup server
             streamingServer = StreamingServer(port: settings.port)
             streamingServer?.touchEnabled = settings.touchEnabled
+            streamingServer?.keyboardEnabled = settings.keyboardEnabled
             streamingServer?.wirelessEncryptionEnabled = settings.wirelessEncryption
             if settings.connectionMode == .wireless {
                 streamingServer?.expectedAuthToken = WirelessAuth.loadOrCreate()
@@ -918,6 +927,33 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
             streamingServer?.onTouchEvent = { [weak self] x, y, action, pointerCount, x2, y2 in
                 self?.handleTouch(x: x, y: y, action: action, pointerCount: pointerCount, x2: x2, y2: y2)
+            }
+
+            streamingServer?.onKeyboardEvent = { [weak self] keyCode, isDown, modifiers in
+                guard let self = self, self.settings.keyboardEnabled else { return }
+                guard AXIsProcessTrusted() else {
+                    self.noteMissingAccessibilityForInput()
+                    return
+                }
+                KeyboardInjector.injectKeyEvent(androidKeyCode: keyCode, isDown: isDown, modifiers: modifiers)
+            }
+
+            streamingServer?.onKeyboardText = { [weak self] text in
+                guard let self = self, self.settings.keyboardEnabled else { return }
+                guard AXIsProcessTrusted() else {
+                    self.noteMissingAccessibilityForInput()
+                    return
+                }
+                KeyboardInjector.injectText(text)
+            }
+
+            streamingServer?.onKeyboardBackspace = { [weak self] count in
+                guard let self = self, self.settings.keyboardEnabled else { return }
+                guard AXIsProcessTrusted() else {
+                    self.noteMissingAccessibilityForInput()
+                    return
+                }
+                KeyboardInjector.injectBackspace(count: count)
             }
 
             streamingServer?.onStats = { [weak self] fps, mbps in
@@ -1231,17 +1267,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Touch Entry Point
 
+    func noteMissingAccessibilityForInput() {
+        if !accessibilityWarningShown {
+            accessibilityWarningShown = true
+            debugLog("⚠️ Accessibility not granted - input ignored")
+            Task { @MainActor in
+                settings.hasAccessibilityPermission = false
+            }
+        }
+    }
+
     func handleTouch(x: Float, y: Float, action: Int, pointerCount: Int = 1, x2: Float = 0, y2: Float = 0) {
         guard settings.touchEnabled else { return }
 
         if !AXIsProcessTrusted() {
-            if !accessibilityWarningShown {
-                accessibilityWarningShown = true
-                debugLog("⚠️ Accessibility not granted - touch ignored")
-                Task { @MainActor in
-                    settings.hasAccessibilityPermission = false
-                }
-            }
+            noteMissingAccessibilityForInput()
             return
         }
 

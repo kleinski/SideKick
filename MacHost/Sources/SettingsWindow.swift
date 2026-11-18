@@ -792,8 +792,8 @@ struct SettingsView: View {
             }
         }
 
-        // Touch Control
-        FrostedGroupBox(title: "Touch Control", icon: "hand.tap") {
+        // Touch & Keyboard Control
+        FrostedGroupBox(title: "Touch & Keyboard Control", icon: "hand.tap") {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
@@ -810,6 +810,27 @@ struct SettingsView: View {
 
                 if !settings.touchEnabled {
                     Text("Touch input is disabled — tablet is display-only")
+                        .font(.system(size: 10))
+                        .foregroundColor(.orange)
+                }
+
+                Divider()
+
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Enable Keyboard Input")
+                            .font(.system(size: 12, weight: .medium))
+                        Text("Allow hardware & on-screen keyboard input from tablet")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer()
+                    Toggle("", isOn: $settings.keyboardEnabled)
+                        .labelsHidden()
+                }
+
+                if !settings.keyboardEnabled {
+                    Text("Keyboard input from the tablet is blocked on this Mac")
                         .font(.system(size: 10))
                         .foregroundColor(.orange)
                 }
@@ -1630,6 +1651,9 @@ class DisplaySettings: ObservableObject {
     @Published var touchEnabled: Bool {
         didSet { save("touchEnabled", touchEnabled) }
     }
+    @Published var keyboardEnabled: Bool {
+        didSet { save("keyboardEnabled", keyboardEnabled) }
+    }
     @Published var connectionMode: ConnectionMode {
         didSet { save("connectionMode", connectionMode.rawValue) }
     }
@@ -1691,6 +1715,7 @@ class DisplaySettings: ObservableObject {
         self.customWidth = defaults.object(forKey: keyPrefix + "customWidth") as? Int ?? 1920
         self.customHeight = defaults.object(forKey: keyPrefix + "customHeight") as? Int ?? 1200
         self.touchEnabled = defaults.object(forKey: keyPrefix + "touchEnabled") as? Bool ?? true
+        self.keyboardEnabled = defaults.object(forKey: keyPrefix + "keyboardEnabled") as? Bool ?? true
         let modeRaw = defaults.string(forKey: keyPrefix + "connectionMode") ?? ConnectionMode.usb.rawValue
         self.connectionMode = ConnectionMode(rawValue: modeRaw) ?? .usb
         self.autoStartStreamingOnLaunch = defaults.object(forKey: keyPrefix + "autoStartStreamingOnLaunch") as? Bool ?? false

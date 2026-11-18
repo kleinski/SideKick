@@ -6,6 +6,7 @@ private enum WireMessage {
     static let legacyVideoFrame: UInt8 = 0
     static let displayConfig: UInt8 = 1
     static let touchEvent: UInt8 = 2
+    static let keyboardEvent: UInt8 = 3
     static let ping: UInt8 = 4
     static let pong: UInt8 = 5
     static let videoFrameWithMetadata: UInt8 = 6
@@ -40,6 +41,10 @@ private enum WireMessage {
     /// BEFORE type 8, so the host knows which profile to apply before the
     /// display config goes out.
     static let clientIdentity: UInt8 = 18
+    /// Client→server, payload-free: client supports keyboard forwarding & permission notifications.
+    static let clientSupportsKeyboard: UInt8 = 19
+    /// Server→client, 1-byte payload (0 or 1): whether keyboard control is currently allowed on Mac.
+    static let keyboardPermission: UInt8 = 20
 }
 
 private extension String {
@@ -185,12 +190,17 @@ class StreamingServer {
     var onCodecNegotiated: ((StreamCodec) -> Void)?
     // Touch callback: (x1, y1, action, pointerCount, x2, y2)
     var onTouchEvent: ((Float, Float, Int, Int, Float, Float) -> Void)?
+    // Keyboard callbacks: (androidKeyCode, isDown, modifiers), (text), (backspaceCount)
+    var onKeyboardEvent: ((Int, Bool, UInt8) -> Void)?
+    var onKeyboardText: ((String) -> Void)?
+    var onKeyboardBackspace: ((Int) -> Void)?
     var onStats: ((Double, Double) -> Void)?
     var onKeyframeRequested: ((Bool) -> Void)?
     // Whether host wants to receive touch events from client. Ping/pong is
     // handled regardless. When false, incoming touch frames are dropped
     // immediately without parsing or dispatching to main queue.
     var touchEnabled: Bool = true
+    var keyboardEnabled: Bool = true
 
     // Wireless auth: when non-nil, non-loopback connections must present this
     // 32-byte token before being allowed to proceed. nil means wireless mode
@@ -271,6 +281,8 @@ class StreamingServer {
     private(set) var clientDecodeLimitTable: [Int: (width: Int, height: Int)]?
     /// Set when the client opts in via type 12. Gates desktopGeometry sends.
     private var clientSupportsDesktopGeometry = false
+    /// Set when the client opts in via type 19. Gates keyboardPermission sends.
+    private var clientSupportsKeyboard = false
     /// Type 18 identity of the connected client, if it sent one.
     private var clientIdentity: DeviceIdentity?
     /// Name from the wireless auth handshake (nil over USB).
@@ -461,6 +473,7 @@ class StreamingServer {
         clientDecodeLimits = nil
         clientDecodeLimitTable = nil
         clientSupportsDesktopGeometry = false
+        clientSupportsKeyboard = false
         clientIdentity = nil
         handshakeDeviceName = authenticatedDeviceName
         startupPrepared = false
@@ -533,8 +546,22 @@ class StreamingServer {
         debugLog("Client connected - sending display config first")
         sendDisplaySize()
         connectionReady = true
+        if clientSupportsKeyboard {
+            let msg = Data([WireMessage.keyboardPermission, keyboardEnabled ? 1 : 0])
+            sendPayload(on: conn, msg)
+        }
         debugLog("Connection ready for frames (metadata=\(clientSupportsFrameMetadata ? "on" : "off"), codec=\(codec))")
         onClientConnected?()
+    }
+
+    func setKeyboardEnabled(_ enabled: Bool) {
+        networkQueue.async { [weak self] in
+            guard let self = self else { return }
+            self.keyboardEnabled = enabled
+            guard self.connectionReady, self.clientSupportsKeyboard, let conn = self.connection, !self.isStopped else { return }
+            let msg = Data([WireMessage.keyboardPermission, enabled ? 1 : 0])
+            self.sendPayload(on: conn, msg)
+        }
     }
 
     private func runAuthHandshake(connection conn: NWConnection, expectedToken: Data) {
@@ -1040,6 +1067,64 @@ class StreamingServer {
                         // tablet's profile applies on its next connection.
                         debugLog("Identity arrived after startup — profile applies on next connect")
                     }
+                }
+
+            case WireMessage.clientSupportsKeyboard:
+                consumeInputBytes(1)
+                if !clientSupportsKeyboard {
+                    clientSupportsKeyboard = true
+                    debugLog("Client supports keyboard input")
+                    if connectionReady {
+                        let msg = Data([WireMessage.keyboardPermission, keyboardEnabled ? 1 : 0])
+                        sendPayload(on: connection, msg)
+                    }
+                }
+
+            case WireMessage.keyboardEvent:
+                guard inputBuffer.count >= 2 else { return }
+                let subType = inputByte(at: 1)
+                switch subType {
+                case 0: // KeyEvent (8 bytes)
+                    guard inputBuffer.count >= 8 else { return }
+                    let msg = Data(inputBuffer.prefix(8))
+                    consumeInputBytes(8)
+                    guard keyboardEnabled else { continue }
+                    let action = msg[2]
+                    let modifiers = msg[3]
+                    let keyCode = msg.withUnsafeBytes { $0.loadUnaligned(fromByteOffset: 4, as: Int32.self) }
+                    DispatchQueue.main.async {
+                        self.onKeyboardEvent?(Int(keyCode), action == 0, modifiers)
+                    }
+                case 1: // TextCommit (4 + byteLen bytes)
+                    guard inputBuffer.count >= 4 else { return }
+                    let header = Data(inputBuffer.prefix(4))
+                    let byteLen = Int(header.withUnsafeBytes { $0.loadUnaligned(fromByteOffset: 2, as: UInt16.self) })
+                    guard byteLen <= 8192 else {
+                        debugLog("Invalid keyboard text length \(byteLen) — dropping byte")
+                        consumeInputBytes(1)
+                        continue
+                    }
+                    guard inputBuffer.count >= 4 + byteLen else { return }
+                    let textData = Data(inputBuffer.dropFirst(4).prefix(byteLen))
+                    consumeInputBytes(4 + byteLen)
+                    guard keyboardEnabled else { continue }
+                    if let text = String(data: textData, encoding: .utf8), !text.isEmpty {
+                        DispatchQueue.main.async {
+                            self.onKeyboardText?(text)
+                        }
+                    }
+                case 2: // BackspaceRepeat (4 bytes)
+                    guard inputBuffer.count >= 4 else { return }
+                    let msg = Data(inputBuffer.prefix(4))
+                    consumeInputBytes(4)
+                    guard keyboardEnabled else { continue }
+                    let count = Int(msg.withUnsafeBytes { $0.loadUnaligned(fromByteOffset: 2, as: UInt16.self) })
+                    DispatchQueue.main.async {
+                        self.onKeyboardBackspace?(count)
+                    }
+                default:
+                    debugLog("Unknown keyboard subType: \(subType)")
+                    consumeInputBytes(1)
                 }
 
             default:

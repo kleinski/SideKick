@@ -43,6 +43,9 @@ class StreamClient(
     /** Invoked when the server confirms the stream codec (true = HEVC). */
     var onCodecSelected: ((Boolean) -> Unit)? = null
 
+    /** Invoked when the Mac reports whether tablet keyboard control is allowed. */
+    var onKeyboardPermissionChanged: ((Boolean) -> Unit)? = null
+
     /** Stream codec for sync-frame parsing. HEVC unless the server says otherwise. */
     @Volatile var streamCodecIsHevc = true
         private set
@@ -146,6 +149,7 @@ class StreamClient(
                 advertiseDecoderLimits() // Also before type 8, for the same reason
                 advertiseDesktopGeometrySupport() // Likewise
                 advertiseIdentity() // Likewise: the Mac picks this tablet's profile when type 8 lands
+                advertiseKeyboardSupport()
                 advertiseFrameMetadataSupport()
                 isConnected = true
                 lastKeyframeReceivedNs = 0L
@@ -408,6 +412,7 @@ class StreamClient(
                 advertiseDecoderLimits() // Also before type 8, for the same reason
                 advertiseDesktopGeometrySupport() // Likewise
                 advertiseIdentity() // Likewise: the Mac picks this tablet's profile when type 8 lands
+                advertiseKeyboardSupport()
                 advertiseFrameMetadataSupport()
                 isConnected = true
                 diagLog("Wireless connected to $host:$port (encryption=${if (encryptedStream) "AES-256-GCM" else "off"})")
@@ -436,6 +441,14 @@ class StreamClient(
             out.writeByte(MESSAGE_CLIENT_SUPPORTS_DESKTOP_GEOMETRY)
             out.flush()
             diagLog("Advertised desktop-geometry support")
+        }
+    }
+
+    private fun advertiseKeyboardSupport() {
+        outputStream?.let { out ->
+            out.writeByte(MESSAGE_CLIENT_SUPPORTS_KEYBOARD)
+            out.flush()
+            diagLog("Advertised keyboard support")
         }
     }
 
@@ -583,6 +596,12 @@ class StreamClient(
                             onCodecSelected?.invoke(streamCodecIsHevc)
                         }
 
+                        MESSAGE_KEYBOARD_PERMISSION -> {
+                            val allowed = input.readByte().toInt() != 0
+                            diagLog("Keyboard permission from Mac: $allowed")
+                            onKeyboardPermissionChanged?.invoke(allowed)
+                        }
+
                         else -> {
                             Log.e(
                                 TAG,
@@ -625,6 +644,73 @@ class StreamClient(
                     buffer.putFloat(y2)
                 }
                 buffer.putInt(action)
+                synchronized(outputLock) {
+                    outputStream?.let { out ->
+                        out.write(buffer.array())
+                        out.flush()
+                    }
+                }
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    fun sendKeyEvent(
+        keyCode: Int,
+        isDown: Boolean,
+        modifiers: Int,
+    ) {
+        if (!isConnected) return
+        touchScope.launch {
+            try {
+                val buffer = ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN)
+                buffer.put(MESSAGE_KEYBOARD_EVENT.toByte())
+                buffer.put(0.toByte()) // subType 0: KeyEvent
+                buffer.put(if (isDown) 0.toByte() else 1.toByte())
+                buffer.put((modifiers and 0xFF).toByte())
+                buffer.putInt(keyCode)
+                synchronized(outputLock) {
+                    outputStream?.let { out ->
+                        out.write(buffer.array())
+                        out.flush()
+                    }
+                }
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    fun sendKeyboardText(text: String) {
+        if (!isConnected || text.isEmpty()) return
+        val bytes = text.toByteArray(Charsets.UTF_8)
+        if (bytes.size > 4096) return
+        touchScope.launch {
+            try {
+                val buffer = ByteBuffer.allocate(4 + bytes.size).order(ByteOrder.LITTLE_ENDIAN)
+                buffer.put(MESSAGE_KEYBOARD_EVENT.toByte())
+                buffer.put(1.toByte()) // subType 1: TextCommit
+                buffer.putShort(bytes.size.toShort())
+                buffer.put(bytes)
+                synchronized(outputLock) {
+                    outputStream?.let { out ->
+                        out.write(buffer.array())
+                        out.flush()
+                    }
+                }
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    fun sendKeyboardBackspace(count: Int = 1) {
+        if (!isConnected || count <= 0) return
+        val clamped = count.coerceIn(1, 100)
+        touchScope.launch {
+            try {
+                val buffer = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN)
+                buffer.put(MESSAGE_KEYBOARD_EVENT.toByte())
+                buffer.put(2.toByte()) // subType 2: BackspaceRepeat
+                buffer.putShort(clamped.toShort())
                 synchronized(outputLock) {
                     outputStream?.let { out ->
                         out.write(buffer.array())
@@ -833,6 +919,7 @@ class StreamClient(
         private const val KEYFRAME_REQUEST_INTERVAL_NS = 500_000_000L
         private const val KEYFRAME_STALE_INTERVAL_NS = 1_500_000_000L
         private const val MESSAGE_VIDEO_FRAME = 0
+        private const val MESSAGE_KEYBOARD_EVENT = 3
         private const val MESSAGE_VIDEO_FRAME_WITH_METADATA = 6
         private const val MESSAGE_KEYFRAME_REQUEST = 7
         private const val MESSAGE_CLIENT_SUPPORTS_FRAME_METADATA = 8
@@ -843,6 +930,8 @@ class StreamClient(
         private const val MESSAGE_DESKTOP_GEOMETRY = 13
         private const val MESSAGE_CLIENT_DECODER_LIMIT_TABLE = 14
         private const val MESSAGE_CLIENT_IDENTITY = 18 // 15–17 reserved
+        private const val MESSAGE_CLIENT_SUPPORTS_KEYBOARD = 19
+        private const val MESSAGE_KEYBOARD_PERMISSION = 20
         private const val FRAME_FLAG_KEYFRAME = 1
         private const val KEYFRAME_REQUEST_FLAG_FORCE = 1
 
