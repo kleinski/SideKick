@@ -52,9 +52,10 @@ While the original **SideScreen** provides an exceptional streaming engine for c
 | **Switching Between Macs** | Manual disconnect + re-pair or manual IP swap | **Two-Way Instant Takeover (`⌘⇧T`):** Pull the tablet to your current Mac via HMAC-SHA256 UDP handover (`54322`) or switch Macs directly from the Android in-stream dialog |
 | **Virtual Display Lifecycle** | Created when the streaming server starts | **Strictly On-Demand + Disconnect Tablet (`⌘⇧D`):** Display is created only when a tablet connects and destroyed immediately on disconnect so windows never get lost on an unseen monitor |
 | **Resolution / HiDPI Changes** | Rebuilds server and drops active tablet connection | **Live Display Rebuild:** Switching resolution, HiDPI, or refresh rate updates the virtual display in-place while keeping the tablet connected |
-| **Wireless Security** | Plaintext token handshake (`SSWA`) & unencrypted TCP stream | **End-to-End Encrypted Wireless (`SSWE`):** Mutual HMAC-SHA256 challenge-response (token never sent in plaintext) + optional **AES-256-GCM** stream encryption (enabled by default) |
-| **macOS Settings UI** | Single scrolling settings window | **4-Tab Settings UI:** Organized into *Connection*, *Display & Touch*, *Stream & Quality*, and *System & Status*, plus background menu-bar mode on window close |
-| **macOS TCC Permissions** | Signed with upstream developer ID; manual TCC handling on custom builds | **Persistent Local Signing & TCC Reset:** Includes `./scripts/setup_signing_cert.sh` (`"SideKick Local Signing"`), automatic TCC reset on binary changes, and one-click reset in Settings |
+| **Wireless Security** | Plaintext token handshake (`SSWA`) & unencrypted TCP stream | **End-to-End Encrypted Wireless (`SSWE`):** Mutual HMAC-SHA256 challenge-response (token never sent in plaintext) + optional **AES-256-GCM** stream encryption (enabled by default) + live Android security status HUD (`🔒 AES-256` / `🔓 Off` / `🔌 USB`) |
+| **Keyboard Forwarding** | Touch & mouse input only | **Hardware & On-Screen Keyboard Forwarding:** Forward Bluetooth/USB/cover keyboards and the Android soft keyboard (via floating keyboard button) to macOS, gated by the Mac's **Keyboard Control** permission toggle |
+| **macOS Menu Bar & UI** | Classic `NSMenu` dropdown + single scrolling settings window | **Native Menu Bar Popover (`NSPopover`) + 4-Tab Settings UI:** Left-click (or `⌘⇧W`) opens live metrics, Start/Stop, Takeover, Disconnect, Mode switch, and Touch/Keyboard/Encryption toggles; right-click opens the full dropdown menu |
+| **macOS TCC Permissions** | Signed with upstream developer ID; manual TCC handling on custom builds | **Persistent Local Signing & One-Click TCC Reset:** Includes `./scripts/setup_signing_cert.sh` (`"SideKick Local Signing"`), automatic TCC reset on binary changes, and live Accessibility status + **Reset & Prompt** right inside *Display & Touch* |
 | **Automation & Launcher** | GUI only | **URL Scheme, CLI & Vorssaint Integration:** Control via `sidekick://takeover`, `sidekick://disconnect`, `sidekick://toggle`, CLI flags, and automatic Vorssaint Quick Links |
 | **App Identity & Updates** | `SideScreen.app` (`com.sidescreen.app`) with Sparkle & Play Store auto-update | **`SideKick.app` (`com.sidekick.app`):** Separate bundle/app ID with upstream auto-updaters disabled so custom builds are never overwritten |
 
@@ -66,12 +67,14 @@ While the original **SideScreen** provides an exceptional streaming engine for c
 - **Two-Way Instant Takeover (`⌘⇧T`):** Switch the active tablet stream between MacBooks at any time:
   - **From Mac:** Click **Take Over Tablet** in the menu bar / Settings footer or press `⌘⇧T` (sends an HMAC-SHA256 authenticated UDP broadcast on port `54322`).
   - **From Android:** Open the in-stream settings overlay (`⚙`) while streaming and tap another paired MacBook to switch immediately.
-- **End-to-End Wireless Encryption (`SSWE` / AES-256-GCM):** Wireless connections use a mutual HMAC-SHA256 challenge-response handshake (so the 256-bit pairing token is never sent in plaintext over the air) and encrypt all video frames, display configs, and touch input using hardware-accelerated **AES-256-GCM** with per-session ephemeral keys. Enabled by default and can be toggled at any time under *Settings → Connection → Network & Security*.
+- **End-to-End Wireless Encryption (`SSWE` / AES-256-GCM):** Wireless connections use a mutual HMAC-SHA256 challenge-response handshake (so the 256-bit pairing token is never sent in plaintext over the air) and encrypt all video frames, display configs, touch input, and keyboard events using hardware-accelerated **AES-256-GCM** with per-session ephemeral keys. The Android stats overlay (`SECURITY` column), in-stream settings banner, and connect toast display the active encryption state in real time.
+- **Native macOS Menu Bar Popover (`NSPopover`):** Left-click the SideKick menu bar icon (or press `⌘⇧W`) for an instant quick-control popover showing live FPS, bitrate, resolution, Start/Stop, Takeover (`⌘⇧T`), Disconnect (`⌘⇧D`), USB/Wi-Fi switch, and Touch / Keyboard / Encryption toggles. Right-click (or Control-click) opens the classic dropdown menu.
+- **Tablet-to-Mac Keyboard Forwarding:** Use a Bluetooth/USB/cover keyboard or tap the floating keyboard icon on Android to type directly into macOS (including `⌘`, `⌥`, `⌃`, `⇧` shortcuts, navigation, `F1–F12`, and international characters). Keyboard input can be allowed or blocked at any time from the Mac app (*Menu Bar Popover* or *Settings → Display & Touch*).
 - **On-Demand Virtual Display & Disconnect Tablet (`⌘⇧D`):** The macOS virtual display is only active while a tablet is actually streaming. Use **Disconnect Tablet** (`⌘⇧D`) to end the tablet session and remove the virtual display while keeping the Mac server listening in standby.
 - **Live Resolution, HiDPI & Refresh Rate Switching:** Change resolution, Retina/HiDPI mode, or frame rate on the fly — the Mac rebuilds the virtual display and notifies the Android decoder without dropping your session.
 - **URL Scheme, CLI & Vorssaint Command Bar Integration:**
   - **URL Scheme:** `sidekick://takeover`, `sidekick://disconnect`, `sidekick://toggle`, `sidekick://start`, `sidekick://stop`, `sidekick://settings`
-  - **CLI Flags:** `/Applications/SideKick.app/Contents/MacOS/SideScreen --takeover` (or `--disconnect`, `--toggle`, `--start`, `--stop`, `--settings`)
+  - **CLI Flags:** `/Applications/SideKick.app/Contents/MacOS/SideKick --takeover` (or `--disconnect`, `--toggle`, `--start`, `--stop`, `--settings`)
   - **Vorssaint Integration:** Automatically registers Quick Links when `/Applications/Vorssaint.app` is present (or re-register any time under *Settings → System & Status → Maintenance & Integrations*).
 
 ---
@@ -188,8 +191,9 @@ cd SideKick
 3. **Automatic Connection & Switching:**
    - When only **one** paired MacBook is running SideKick on your WiFi, opening the Android app connects to it automatically.
    - When **multiple** paired MacBooks are online, the Android app highlights the online Macs (`● Online`) so you can pick which Mac to connect to.
-   - **Switch Macs at any time:** Press `⌘⇧T` (or click **Take Over Tablet**) on the MacBook you want to switch to, or open the in-stream settings (`⚙`) on the tablet and tap another paired Mac.
-   - **Disconnect without stopping the server:** Press `⌘⇧D` (or click **Disconnect Tablet** in the Mac menu bar) to close the tablet session and remove the virtual display while keeping the Mac ready for the next connection.
+   - **Switch Macs at any time:** Press `⌘⇧T` (or click **Takeover** in the Menu Bar Popover) on the MacBook you want to switch to, or open the in-stream settings (`⚙`) on the tablet and tap another paired Mac.
+   - **Disconnect without stopping the server:** Press `⌘⇧D` (or click **Disconnect Tablet** in the Menu Bar Popover) to close the tablet session and remove the virtual display while keeping the Mac ready for the next connection.
+   - **Type from your tablet:** Connect a hardware keyboard or tap the floating **Keyboard** icon next to `⚙` on Android to open the on-screen keyboard. Toggle **Keyboard Control** in the Mac Menu Bar Popover (or *Settings → Display & Touch*) to allow or block keyboard input.
 
 ### USB Mode (Lowest Latency)
 
@@ -206,7 +210,7 @@ Settings in the macOS app are organized into four tabs:
 | Tab | Settings & Actions |
 |---|---|
 | **Connection** | Mode (`USB` / `Wireless`), QR Code & Paired Token management, `Launch at Login`, `Auto-start streaming on launch`, `Startup mode` |
-| **Display & Touch** | Resolution presets (`720p` to `8K` + custom), `HiDPI (Retina)` mode, `Enable Touch Input` (all display changes apply live without disconnecting the tablet) |
+| **Display & Touch** | Resolution presets (`720p` to `8K` + custom), `HiDPI (Retina)` mode, `Enable Touch Input`, `Enable Keyboard Input`, `Accessibility Permission` status + `Reset & Prompt` (all display changes apply live without disconnecting the tablet) |
 | **Stream & Quality** | `Refresh Rate` (30–120 Hz), `Target Bitrate` (20–5000 Mbps), `Encoding Latency`, `Gaming Boost` (1 Gbps, 120 Hz) |
 | **System & Status** | Live connection & permission status, `Reset macOS Permissions (TCC)`, `Register Actions in Vorssaint` |
 
