@@ -979,7 +979,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateKeyboardButtonState() {
-        binding.keyboardButton.alpha = if (keyboardAllowedOnMac) 1.0f else 0.4f
+        binding.keyboardButton.visibility =
+            if (isConnected && keyboardAllowedOnMac) View.VISIBLE else View.GONE
+        binding.keyboardButton.alpha = 1.0f
         if (!keyboardAllowedOnMac) {
             hideSoftKeyboard()
         }

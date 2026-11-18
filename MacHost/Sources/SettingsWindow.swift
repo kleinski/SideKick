@@ -1,4 +1,5 @@
 import Cocoa
+import LocalAuthentication
 import SwiftUI
 
 // MARK: - Frosted GroupBox Component
@@ -818,14 +819,19 @@ struct SettingsView: View {
 
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Enable Keyboard Input")
-                            .font(.system(size: 12, weight: .medium))
-                        Text("Allow hardware & on-screen keyboard input from tablet")
+                        HStack(spacing: 4) {
+                            Text("Enable Keyboard Input")
+                                .font(.system(size: 12, weight: .medium))
+                            Image(systemName: "touchid")
+                                .font(.system(size: 10))
+                                .foregroundColor(.secondary)
+                        }
+                        Text("Allow hardware & on-screen keyboard input from tablet (Touch ID / password required to enable)")
                             .font(.system(size: 10))
                             .foregroundColor(.secondary)
                     }
                     Spacer()
-                    Toggle("", isOn: $settings.keyboardEnabled)
+                    Toggle("", isOn: settings.keyboardAuthBinding)
                         .labelsHidden()
                 }
 
@@ -1697,6 +1703,42 @@ class DisplaySettings: ObservableObject {
     var onToggleServer: (() -> Void)?
     var onRequestTakeover: (() -> Void)?
     var onDisconnectTablet: (() -> Void)?
+
+    /// SwiftUI binding for Keyboard Control: disabling works immediately;
+    /// enabling requires local Touch ID or macOS user password authentication.
+    var keyboardAuthBinding: Binding<Bool> {
+        Binding(
+            get: { self.keyboardEnabled },
+            set: { [weak self] newValue in
+                self?.setKeyboardEnabledWithAuth(newValue)
+            }
+        )
+    }
+
+    func setKeyboardEnabledWithAuth(_ desired: Bool) {
+        if !desired {
+            keyboardEnabled = false
+            return
+        }
+        guard !keyboardEnabled else { return }
+
+        let context = LAContext()
+        var authError: NSError?
+        let policy: LAPolicy = .deviceOwnerAuthentication
+        guard context.canEvaluatePolicy(policy, error: &authError) else {
+            // If the system cannot evaluate device owner authentication, deny enabling.
+            return
+        }
+
+        NSApp.activate(ignoringOtherApps: true)
+        context.evaluatePolicy(policy, localizedReason: "enable tablet keyboard control on this Mac") { [weak self] success, _ in
+            DispatchQueue.main.async {
+                if success {
+                    self?.keyboardEnabled = true
+                }
+            }
+        }
+    }
 
     init() {
         self.resolution = defaults.string(forKey: keyPrefix + "resolution") ?? "1920x1200"

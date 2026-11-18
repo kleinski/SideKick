@@ -17,6 +17,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+<a id="1.2.7"></a>
+## [1.2.7] - 2026-11-18 — Touch ID / Password Guard for Keyboard Control
+
+### Added
+- **Touch ID / Password Protection on macOS:** Re-enabling **Keyboard Control** (in the Menu Bar Popover or *Settings → Display & Touch*) now requires local macOS Touch ID or user password authentication via `LocalAuthentication` (`LAContext`). Turning keyboard input off remains a single click.
+
+### Changed
+- **Android Keyboard Icon Visibility:** When keyboard control is disabled on the Mac, the floating keyboard button on Android is now hidden (`View.GONE`) instead of dimmed.
+
+---
+
 <a id="1.2.6"></a>
 ## [1.2.6] - 2026-11-18 — Tablet-to-Mac Keyboard Forwarding
 

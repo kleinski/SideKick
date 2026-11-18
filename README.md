@@ -69,7 +69,7 @@ While the original **SideScreen** provides an exceptional streaming engine for c
   - **From Android:** Open the in-stream settings overlay (`⚙`) while streaming and tap another paired MacBook to switch immediately.
 - **End-to-End Wireless Encryption (`SSWE` / AES-256-GCM):** Wireless connections use a mutual HMAC-SHA256 challenge-response handshake (so the 256-bit pairing token is never sent in plaintext over the air) and encrypt all video frames, display configs, touch input, and keyboard events using hardware-accelerated **AES-256-GCM** with per-session ephemeral keys. The Android stats overlay (`SECURITY` column), in-stream settings banner, and connect toast display the active encryption state in real time.
 - **Native macOS Menu Bar Popover (`NSPopover`):** Left-click the SideKick menu bar icon (or press `⌘⇧W`) for an instant quick-control popover showing live FPS, bitrate, resolution, Start/Stop, Takeover (`⌘⇧T`), Disconnect (`⌘⇧D`), USB/Wi-Fi switch, and Touch / Keyboard / Encryption toggles. Right-click (or Control-click) opens the classic dropdown menu.
-- **Tablet-to-Mac Keyboard Forwarding:** Use a Bluetooth/USB/cover keyboard or tap the floating keyboard icon on Android to type directly into macOS (including `⌘`, `⌥`, `⌃`, `⇧` shortcuts, navigation, `F1–F12`, and international characters). Keyboard input can be allowed or blocked at any time from the Mac app (*Menu Bar Popover* or *Settings → Display & Touch*).
+- **Tablet-to-Mac Keyboard Forwarding:** Use a Bluetooth/USB/cover keyboard or tap the floating keyboard icon on Android to type directly into macOS (including `⌘`, `⌥`, `⌃`, `⇧` shortcuts, navigation, `F1–F12`, and international characters). Keyboard input can be blocked in one click from the Mac app (*Menu Bar Popover* or *Settings → Display & Touch*), and re-enabling it requires **Touch ID / macOS user password**.
 - **On-Demand Virtual Display & Disconnect Tablet (`⌘⇧D`):** The macOS virtual display is only active while a tablet is actually streaming. Use **Disconnect Tablet** (`⌘⇧D`) to end the tablet session and remove the virtual display while keeping the Mac server listening in standby.
 - **Live Resolution, HiDPI & Refresh Rate Switching:** Change resolution, Retina/HiDPI mode, or frame rate on the fly — the Mac rebuilds the virtual display and notifies the Android decoder without dropping your session.
 - **URL Scheme, CLI & Vorssaint Command Bar Integration:**
@@ -146,7 +146,7 @@ Download the latest **SideKick** builds from [**GitHub Releases (`kleinski/SideK
 - **Android (`SideKick-<version>-android-release.apk`):**
   - Download and install the `.apk` directly on your Android tablet, or install via ADB:
     ```bash
-    adb install -r SideKick-1.2.6-android-release.apk
+    adb install -r SideKick-1.2.7-android-release.apk
     ```
   - Because SideKick uses the package ID `com.sidekick.app`, it can be installed alongside the original Google Play `SideScreen` app without conflict.
 

@@ -164,15 +164,15 @@ struct MenuBarPopoverView: View {
                 isOn: $settings.touchEnabled
             )
 
-            // Keyboard Control Quick Toggle
+            // Keyboard Control Quick Toggle (Touch ID / password required to enable)
             toggleRow(
                 icon: "keyboard",
                 title: "Keyboard Control",
                 subtitle: settings.keyboardEnabled && !settings.hasAccessibilityPermission
                     ? "Accessibility needed"
-                    : (settings.keyboardEnabled ? "Allow tablet keyboard" : "Blocked on Mac"),
+                    : (settings.keyboardEnabled ? "Allow tablet keyboard" : "Locked (Touch ID to enable)"),
                 warn: settings.keyboardEnabled && !settings.hasAccessibilityPermission,
-                isOn: $settings.keyboardEnabled
+                isOn: settings.keyboardAuthBinding
             )
 
             // Wireless Encryption Quick Toggle
