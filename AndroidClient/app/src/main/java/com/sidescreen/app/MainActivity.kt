@@ -545,6 +545,7 @@ class MainActivity : AppCompatActivity() {
         setSurfaceAspect("${DemoPlayer.WIDTH}:${DemoPlayer.HEIGHT}")
         updateResolutionOverlay()
         binding.resolutionText.append(" (demo)")
+        binding.connectedMacText.text = "SideKick Demo"
         binding.latencyText.text = "—"
         binding.securityText.text = "Demo"
         binding.securityText.setTextColor(Color.parseColor("#999999"))
@@ -553,7 +554,7 @@ class MainActivity : AppCompatActivity() {
 
         player.onStats = { fps, mbps ->
             runOnUiThread {
-                binding.fpsText.text = String.format("%.1f", fps)
+                binding.fpsText.text = String.format("%.0f FPS", fps)
                 binding.bitrateText.text = String.format("%.1f Mbps", mbps)
             }
         }
@@ -576,7 +577,7 @@ class MainActivity : AppCompatActivity() {
         displayHeight = 0
 
         hideSoftKeyboard()
-        binding.floatingButtonsContainer.visibility = View.GONE
+        binding.overlayRestoreHandle.visibility = View.GONE
         binding.statusBar.visibility = View.GONE
         binding.settingsPanel.visibility = View.VISIBLE
         setSurfaceAspect(null)
@@ -700,22 +701,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun restoreOverlayPosition() {
-        val x = prefs.overlayX
-        val y = prefs.overlayY
+        binding.statusBar.translationX = 0f
+        binding.statusBar.translationY = 0f
 
-        if (x >= 0 && y >= 0) {
-            binding.statusBar.post {
-                binding.statusBar.x = x
-                binding.statusBar.y = y
-            }
-        }
-
-        // Apply opacity to both overlay and settings button
+        // Apply opacity and visibility to the unified top overlay
         val opacity = prefs.overlayOpacity
         updateOverlayOpacity(opacity)
-        updateSettingsButtonOpacity(opacity)
-
-        // Apply visibility
         updateOverlayVisibility(prefs.showStatsOverlay)
     }
 
@@ -724,19 +715,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateOverlayVisibility(show: Boolean) {
-        if ((streamClient != null || demoActive) && show) {
-            binding.statusBar.visibility = View.VISIBLE
-            // Restore position when showing
-            val x = prefs.overlayX
-            val y = prefs.overlayY
-            if (x >= 0 && y >= 0) {
-                binding.statusBar.post {
-                    binding.statusBar.x = x
-                    binding.statusBar.y = y
-                }
-            }
+        binding.statsDetailsRow.visibility = if (show) View.VISIBLE else View.GONE
+        if (isStreamingUi) {
+            applySettingsButtonVisibility()
         } else {
             binding.statusBar.visibility = View.GONE
+            binding.overlayRestoreHandle.visibility = View.GONE
         }
     }
 
@@ -975,7 +959,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateSettingsButtonOpacity(opacity: Float) {
-        binding.floatingButtonsContainer.alpha = opacity
+        binding.statusBar.alpha = opacity
     }
 
     private fun updateKeyboardButtonState() {
@@ -985,6 +969,25 @@ class MainActivity : AppCompatActivity() {
         if (!keyboardAllowedOnMac) {
             hideSoftKeyboard()
         }
+    }
+
+    private fun showSwitchMacMenu() {
+        val allPaired = pairedHostStorage.loadAll()
+        val otherMacs = if (isConnected && !demoActive && allPaired.size > 1) allPaired.drop(1) else emptyList()
+        if (otherMacs.isEmpty()) {
+            Toast.makeText(this, "No other paired Macs available", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val popup = android.widget.PopupMenu(this, binding.switchMacButton)
+        otherMacs.forEachIndexed { idx, mac ->
+            popup.menu.add(0, idx, idx, "Switch to ${mac.macName}")
+        }
+        popup.setOnMenuItemClickListener { item ->
+            val target = otherMacs.getOrNull(item.itemId) ?: return@setOnMenuItemClickListener false
+            switchWirelessMac(target, fromTakeover = false)
+            true
+        }
+        popup.show()
     }
 
     private fun toggleSoftKeyboard() {
@@ -1018,14 +1021,35 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupSettingsButton() {
-        // Simple click to show settings dialog
-        // Position can be changed via corner buttons in settings
         binding.settingsButton.setOnClickListener {
             showSettingsDialog()
         }
 
         binding.keyboardButton.setOnClickListener {
             toggleSoftKeyboard()
+        }
+
+        binding.switchMacButton.setOnClickListener {
+            showSwitchMacMenu()
+        }
+
+        binding.hideOverlayButton.setOnClickListener {
+            binding.statusBar.visibility = View.GONE
+            binding.overlayRestoreHandle.visibility = View.VISIBLE
+            revealHandler.removeCallbacks(hideSettingsButtonRunnable)
+        }
+
+        binding.overlayRestoreHandle.setOnClickListener {
+            if (prefs.hideSettingsButton) {
+                revealSettingsButtonTemporarily()
+            } else {
+                binding.statusBar.visibility = View.VISIBLE
+                binding.overlayRestoreHandle.visibility = View.GONE
+            }
+        }
+
+        binding.overlayDisconnectButton.setOnClickListener {
+            if (demoActive) stopDemo() else disconnect()
         }
 
         binding.keyboardInputProxy.onTextCommitted = { text ->
@@ -1042,17 +1066,19 @@ class MainActivity : AppCompatActivity() {
             handleForwardedKeyEvent(event)
         }
 
-        // Escape hatch for the hidden icon: the back gesture briefly reveals it
-        // instead of leaving the app. Back is not forwarded to the Mac, so this
-        // cannot conflict with streamed touch input.
+        // Escape hatch for the hidden overlay: the back gesture reveals it
+        // instead of leaving the app. Back is not forwarded to the Mac.
         onBackPressedDispatcher.addCallback(
             this,
             object : androidx.activity.OnBackPressedCallback(true) {
                 override fun handleOnBackPressed() {
-                    if (isStreamingUi && prefs.hideSettingsButton &&
-                        binding.floatingButtonsContainer.visibility != View.VISIBLE
-                    ) {
-                        revealSettingsButtonTemporarily()
+                    if (isStreamingUi && binding.statusBar.visibility != View.VISIBLE) {
+                        if (prefs.hideSettingsButton) {
+                            revealSettingsButtonTemporarily()
+                        } else {
+                            binding.statusBar.visibility = View.VISIBLE
+                            binding.overlayRestoreHandle.visibility = View.GONE
+                        }
                     } else if (demoActive) {
                         stopDemo()
                     } else {
@@ -1065,11 +1091,13 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    /** Streaming-time visibility of the settings & keyboard icons, honoring the hide preference. */
+    /** Streaming-time visibility of the unified top overlay, honoring the hide preference. */
     private fun applySettingsButtonVisibility() {
-        binding.floatingButtonsContainer.visibility =
-            if (prefs.hideSettingsButton) View.GONE else View.VISIBLE
-        binding.keyboardButton.visibility = if (isConnected) View.VISIBLE else View.GONE
+        val showBar = isStreamingUi && !prefs.hideSettingsButton
+        binding.statusBar.visibility = if (showBar) View.VISIBLE else View.GONE
+        binding.overlayRestoreHandle.visibility = if (isStreamingUi && !showBar) View.VISIBLE else View.GONE
+        binding.switchMacButton.visibility =
+            if (isConnected && !demoActive && pairedHostStorage.loadAll().size > 1) View.VISIBLE else View.GONE
         updateKeyboardButtonState()
     }
 
@@ -1077,12 +1105,14 @@ class MainActivity : AppCompatActivity() {
     private val hideSettingsButtonRunnable =
         Runnable {
             if (isStreamingUi && prefs.hideSettingsButton) {
-                binding.floatingButtonsContainer.visibility = View.GONE
+                binding.statusBar.visibility = View.GONE
+                binding.overlayRestoreHandle.visibility = View.VISIBLE
             }
         }
 
     private fun revealSettingsButtonTemporarily() {
-        binding.floatingButtonsContainer.visibility = View.VISIBLE
+        binding.statusBar.visibility = View.VISIBLE
+        binding.overlayRestoreHandle.visibility = View.GONE
         revealHandler.removeCallbacks(hideSettingsButtonRunnable)
         revealHandler.postDelayed(hideSettingsButtonRunnable, 5_000L)
     }
@@ -1091,123 +1121,11 @@ class MainActivity : AppCompatActivity() {
         updateSettingsButtonPosition(prefs.settingsButtonCorner)
     }
 
-    /**
-     * Use ConstraintSet to position floating buttons container - most reliable method
-     * Works correctly with orientation changes
-     * Supports 8 positions: 4 corners + 4 edges
-     */
-    private fun updateSettingsButtonPosition(position: Int) {
-        val constraintLayout = binding.root as ConstraintLayout
-        val constraintSet = ConstraintSet()
-        constraintSet.clone(constraintLayout)
-
-        val buttonId = binding.floatingButtonsContainer.id
-        val marginDp = (24 * resources.displayMetrics.density).toInt()
-
-        // Clear all constraints first
-        constraintSet.clear(buttonId, ConstraintSet.TOP)
-        constraintSet.clear(buttonId, ConstraintSet.BOTTOM)
-        constraintSet.clear(buttonId, ConstraintSet.START)
-        constraintSet.clear(buttonId, ConstraintSet.END)
-
-        when (position) {
-            0 -> { // Bottom Right (default)
-                constraintSet.connect(
-                    buttonId,
-                    ConstraintSet.BOTTOM,
-                    ConstraintSet.PARENT_ID,
-                    ConstraintSet.BOTTOM,
-                    marginDp,
-                )
-                constraintSet.connect(buttonId, ConstraintSet.END, ConstraintSet.PARENT_ID, ConstraintSet.END, marginDp)
-            }
-
-            1 -> { // Bottom Left
-                constraintSet.connect(
-                    buttonId,
-                    ConstraintSet.BOTTOM,
-                    ConstraintSet.PARENT_ID,
-                    ConstraintSet.BOTTOM,
-                    marginDp,
-                )
-                constraintSet.connect(
-                    buttonId,
-                    ConstraintSet.START,
-                    ConstraintSet.PARENT_ID,
-                    ConstraintSet.START,
-                    marginDp,
-                )
-            }
-
-            2 -> { // Top Right
-                constraintSet.connect(buttonId, ConstraintSet.TOP, ConstraintSet.PARENT_ID, ConstraintSet.TOP, marginDp)
-                constraintSet.connect(buttonId, ConstraintSet.END, ConstraintSet.PARENT_ID, ConstraintSet.END, marginDp)
-            }
-
-            3 -> { // Top Left
-                constraintSet.connect(buttonId, ConstraintSet.TOP, ConstraintSet.PARENT_ID, ConstraintSet.TOP, marginDp)
-                constraintSet.connect(
-                    buttonId,
-                    ConstraintSet.START,
-                    ConstraintSet.PARENT_ID,
-                    ConstraintSet.START,
-                    marginDp,
-                )
-            }
-
-            4 -> { // Top Center
-                constraintSet.connect(buttonId, ConstraintSet.TOP, ConstraintSet.PARENT_ID, ConstraintSet.TOP, marginDp)
-                constraintSet.connect(buttonId, ConstraintSet.START, ConstraintSet.PARENT_ID, ConstraintSet.START, 0)
-                constraintSet.connect(buttonId, ConstraintSet.END, ConstraintSet.PARENT_ID, ConstraintSet.END, 0)
-            }
-
-            5 -> { // Bottom Center
-                constraintSet.connect(
-                    buttonId,
-                    ConstraintSet.BOTTOM,
-                    ConstraintSet.PARENT_ID,
-                    ConstraintSet.BOTTOM,
-                    marginDp,
-                )
-                constraintSet.connect(buttonId, ConstraintSet.START, ConstraintSet.PARENT_ID, ConstraintSet.START, 0)
-                constraintSet.connect(buttonId, ConstraintSet.END, ConstraintSet.PARENT_ID, ConstraintSet.END, 0)
-            }
-
-            6 -> { // Center Left
-                constraintSet.connect(buttonId, ConstraintSet.TOP, ConstraintSet.PARENT_ID, ConstraintSet.TOP, 0)
-                constraintSet.connect(buttonId, ConstraintSet.BOTTOM, ConstraintSet.PARENT_ID, ConstraintSet.BOTTOM, 0)
-                constraintSet.connect(
-                    buttonId,
-                    ConstraintSet.START,
-                    ConstraintSet.PARENT_ID,
-                    ConstraintSet.START,
-                    marginDp,
-                )
-            }
-
-            7 -> { // Center Right
-                constraintSet.connect(buttonId, ConstraintSet.TOP, ConstraintSet.PARENT_ID, ConstraintSet.TOP, 0)
-                constraintSet.connect(buttonId, ConstraintSet.BOTTOM, ConstraintSet.PARENT_ID, ConstraintSet.BOTTOM, 0)
-                constraintSet.connect(buttonId, ConstraintSet.END, ConstraintSet.PARENT_ID, ConstraintSet.END, marginDp)
-            }
-
-            else -> { // Default to bottom right
-                constraintSet.connect(
-                    buttonId,
-                    ConstraintSet.BOTTOM,
-                    ConstraintSet.PARENT_ID,
-                    ConstraintSet.BOTTOM,
-                    marginDp,
-                )
-                constraintSet.connect(buttonId, ConstraintSet.END, ConstraintSet.PARENT_ID, ConstraintSet.END, marginDp)
-            }
-        }
-
-        // Reset any absolute positioning that might have been set
-        binding.floatingButtonsContainer.translationX = 0f
-        binding.floatingButtonsContainer.translationY = 0f
-
-        constraintSet.applyTo(constraintLayout)
+    private fun updateSettingsButtonPosition(
+        @Suppress("UNUSED_PARAMETER") position: Int,
+    ) {
+        binding.statusBar.translationX = 0f
+        binding.statusBar.translationY = 0f
     }
 
     /**
@@ -1492,7 +1410,7 @@ class MainActivity : AppCompatActivity() {
                     resetOrientationToSensor()
                     binding.settingsPanel.visibility = View.VISIBLE
                     hideSoftKeyboard()
-        binding.floatingButtonsContainer.visibility = View.GONE
+        binding.overlayRestoreHandle.visibility = View.GONE
                     binding.statusBar.visibility = View.GONE
                     val mode = prefs.connectionMode
                     val willTransition = mode == ConnectionMode.WIRELESS
@@ -1538,7 +1456,7 @@ class MainActivity : AppCompatActivity() {
 
         streamClient?.onStats = { fps, mbps ->
             runOnUiThread {
-                binding.fpsText.text = String.format("%.1f", fps)
+                binding.fpsText.text = String.format("%.0f FPS", fps)
                 binding.bitrateText.text = String.format("%.1f Mbps", mbps)
             }
         }
@@ -1667,6 +1585,7 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
                 log("Connecting wirelessly to $host:$port...")
+                runOnUiThread { binding.connectedMacText.text = macName }
                 streamClient = StreamClient(host, port, applicationContext)
                 setupStreamClientCallbacks()
                 streamClient?.connectWireless(token, deviceName)
@@ -1695,6 +1614,7 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
                 log("Connecting to $host:$port...")
+                runOnUiThread { binding.connectedMacText.text = "USB Mac" }
 
                 streamClient = StreamClient(host, port, applicationContext)
                 streamClient?.onFrameReceived = { frameData, frameSize, timestamp, isKeyframe ->
@@ -1781,7 +1701,7 @@ class MainActivity : AppCompatActivity() {
 
                             binding.settingsPanel.visibility = View.VISIBLE
                             hideSoftKeyboard()
-        binding.floatingButtonsContainer.visibility = View.GONE
+        binding.overlayRestoreHandle.visibility = View.GONE
                             binding.statusBar.visibility = View.GONE
 
                             // Restart checklist updates immediately
@@ -1818,7 +1738,7 @@ class MainActivity : AppCompatActivity() {
 
                 streamClient?.onStats = { fps, mbps ->
                     runOnUiThread {
-                        binding.fpsText.text = String.format("%.1f", fps)
+                        binding.fpsText.text = String.format("%.0f FPS", fps)
                         binding.bitrateText.text = String.format("%.1f Mbps", mbps)
                     }
                 }

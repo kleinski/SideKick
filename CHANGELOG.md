@@ -17,6 +17,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+<a id="1.2.8"></a>
+## [1.2.8] - 2026-11-19 — Unified Android Top Control Overlay
+
+### Changed
+- **Unified Top Control & Status Overlay on Android:**
+  - Replaced the separate bottom-corner floating buttons and corner stats card with a single translucent frosted-glass pill at the top center of the streamed display.
+  - **Left:** Active Mac name + status indicator and compact live telemetry (`FPS`, `Mbps`, `Resolution`, `RTT`, `🔒 AES-256`).
+  - **Right:** Direct action buttons in one row (`Keyboard`, `Switch Mac`, `Hide`, `Settings`, `Disconnect`).
+  - When hidden, a subtle top-center notch handle (or the Back gesture) restores the overlay immediately.
+
+---
+
 <a id="1.2.7"></a>
 ## [1.2.7] - 2026-11-18 — Touch ID / Password Guard for Keyboard Control
 
