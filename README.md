@@ -133,6 +133,25 @@ Run a Mac with no display of its own — a Mac Studio or Mini on the go, or a la
 
 ## Installation
 
+### Homebrew (macOS)
+
+Install or upgrade **SideKick** on macOS via my Homebrew Cask tap ([`kleinski/homebrew-sidekick`](https://github.com/kleinski/homebrew-sidekick)):
+
+```bash
+brew install --cask kleinski/sidekick/sidekick
+```
+
+To upgrade later:
+
+```bash
+brew upgrade --cask kleinski/sidekick/sidekick
+```
+
+> Since SideKick is built without a paid Apple Developer ID notarization certificate, clear the quarantine attribute once after installing if macOS Gatekeeper prompts you (or pass `--no-quarantine` to `brew install`):
+> ```bash
+> xattr -cr /Applications/SideKick.app
+> ```
+
 ### Download from SideKick GitHub Releases
 
 Download the latest **SideKick** builds from [**GitHub Releases (`kleinski/SideKick`)**](https://github.com/kleinski/SideKick/releases):
