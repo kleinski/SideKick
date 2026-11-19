@@ -5,48 +5,48 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 VERSION=$(cat "$ROOT_DIR/VERSION" | tr -d '[:space:]')
+TAG="v$VERSION"
 
 echo "======================================="
-echo "  Side Screen - Release v$VERSION"
+echo "  SideKick - Release $TAG"
 echo "======================================="
 echo ""
 
-# 1. Lint
-echo "[1/3] Linting..."
-cd "$ROOT_DIR/MacHost"
-if command -v swiftlint &>/dev/null; then
-    swiftlint lint --config .swiftlint.yml --strict --quiet
-    echo "  Swift lint OK"
-fi
-
-cd "$ROOT_DIR/AndroidClient"
-if command -v ktlint &>/dev/null; then
-    ktlint "app/src/main/java/**/*.kt" --relative
-    echo "  Kotlin lint OK"
-fi
-
-# 2. Commit & push
-echo "[2/3] Pushing to GitHub..."
 cd "$ROOT_DIR"
+
+# 1. Sync version across Info.plist & README.md
+echo "[1/4] Syncing version $VERSION..."
+"$SCRIPT_DIR/sync-version.sh"
+
+# 2. Build macOS DMG & Android APKs
+echo "[2/4] Building macOS & Android artifacts..."
+"$SCRIPT_DIR/build_mac.sh"
+"$SCRIPT_DIR/build_android.sh"
+
+# 3. Commit, tag & push to GitHub
+echo "[3/4] Pushing to GitHub..."
 if [ -n "$(git status --porcelain)" ]; then
     git add -A
     git status --short
-    read -p "Commit message: " MSG
+    read -p "Commit message [chore: release $TAG]: " MSG
+    MSG="${MSG:-chore: release $TAG}"
     git commit -m "$MSG"
 fi
-git push
+git push origin main
 
-# 3. Tag & release
-echo "[3/3] Creating release tag..."
-if git rev-parse "$VERSION" >/dev/null 2>&1; then
-    echo "  Tag $VERSION already exists, skipping"
+if git rev-parse "$TAG" >/dev/null 2>&1; then
+    echo "  Tag $TAG already exists — skipping tag creation"
 else
-    git tag "$VERSION"
-    git push origin "$VERSION"
-    echo "  Tag $VERSION pushed - GitHub Actions will build the release"
+    git tag "$TAG"
+    git push origin "$TAG"
+    echo "  ✓ Tag $TAG pushed"
 fi
+
+# 4. Publish GitHub Release + update Homebrew Cask
+echo "[4/4] Publishing GitHub Release & updating Homebrew Cask..."
+uv run "$SCRIPT_DIR/publish_release.py"
 
 echo ""
 echo "======================================="
-echo "  Done! Check: gh release view $VERSION"
+echo "  Done! Released SideKick $TAG"
 echo "======================================="
