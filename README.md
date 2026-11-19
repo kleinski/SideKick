@@ -147,7 +147,7 @@ To upgrade later:
 brew upgrade --cask kleinski/sidekick/sidekick
 ```
 
-> Quarantine attributes (`com.apple.quarantine`) are cleared automatically during Homebrew installation via `postflight`.
+> Quarantine attributes (`com.apple.quarantine`) are cleared automatically during Homebrew installation via `postflight_steps`.
 
 ### Download from SideKick GitHub Releases
 
