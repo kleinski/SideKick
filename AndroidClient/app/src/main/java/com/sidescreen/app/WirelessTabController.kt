@@ -18,6 +18,7 @@ import com.google.android.material.button.MaterialButton
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -94,6 +95,7 @@ class WirelessTabController(
      * instead of immediately auto-reconnecting in a loop.
      */
     private var suppressAutoConnect = false
+    private var autoConnectRetryPending = false
 
     fun bind() {
         views.scanButton.setOnClickListener { triggerScan() }
@@ -159,7 +161,14 @@ class WirelessTabController(
                             .toSet()
                     if (changed || !mdnsOnline.all { it in onlineHostIds }) {
                         onlineHostIds = onlineHostIds + mdnsOnline
-                        renderPairedMacsList(all)
+                        val onlineMacs = all.filter { it.hostId in onlineHostIds }
+                        if (!suppressAutoConnect && onlineMacs.size == 1) {
+                            val soleMac = onlineMacs.first()
+                            views.scanStatusText?.text = "${soleMac.macName} is online — connecting automatically…"
+                            connectToEntry(soleMac)
+                        } else {
+                            renderPairedMacsList(all)
+                        }
                     }
                 }
             }
@@ -255,6 +264,15 @@ class WirelessTabController(
                             views.scanStatusText?.text =
                                 "No paired MacBook reachable yet. Make sure SideKick is running on your Mac."
                             renderPairedMacsList(refreshedEntries)
+                            if (allowAutoConnect && !autoConnectRetryPending) {
+                                autoConnectRetryPending = true
+                                scope.launch {
+                                    delay(1_500L)
+                                    if (state == State.PAIRED_IDLE && !suppressAutoConnect) {
+                                        scanAndRefreshMacList(allowAutoConnect = true)
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -282,16 +300,16 @@ class WirelessTabController(
         val ctx = activity
         val card =
             LinearLayout(ctx).apply {
-                orientation = LinearLayout.VERTICAL
-                val pad = dp(14)
-                setPadding(pad, pad, pad, pad)
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(dp(14), dp(12), dp(12), dp(12))
                 background =
                     GradientDrawable().apply {
                         cornerRadius = dp(16).toFloat()
-                        setColor(if (isPreselected) Color.parseColor("#224CAF50") else Color.parseColor("#18FFFFFF"))
+                        setColor(if (isPreselected) Color.parseColor("#1E293B") else Color.parseColor("#14FFFFFF"))
                         setStroke(
-                            dp(if (isPreselected) 2 else 1),
-                            if (isPreselected) Color.parseColor("#4CAF50") else Color.parseColor("#33FFFFFF"),
+                            dp(1),
+                            if (isPreselected) Color.parseColor("#60A5FA") else Color.parseColor("#24FFFFFF"),
                         )
                     }
                 layoutParams =
@@ -303,21 +321,14 @@ class WirelessTabController(
                     }
             }
 
-        // Top row: status dot + Mac name + badge + forget button
-        val topRow =
-            LinearLayout(ctx).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-            }
-
         val dot =
             TextView(ctx).apply {
-                text = if (isOnline) "●" else "○"
-                setTextColor(if (isOnline) Color.parseColor("#4ade80") else Color.parseColor("#777777"))
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
-                setPadding(0, 0, dp(8), 0)
+                text = "●"
+                setTextColor(if (isOnline) Color.parseColor("#4ADE80") else Color.parseColor("#64748B"))
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                setPadding(0, 0, dp(10), 0)
             }
-        topRow.addView(dot)
+        card.addView(dot)
 
         val titleCol =
             LinearLayout(ctx).apply {
@@ -329,28 +340,59 @@ class WirelessTabController(
             TextView(ctx).apply {
                 text = entry.macName
                 setTextColor(Color.WHITE)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
                 setTypeface(typeface, Typeface.BOLD)
             }
         titleCol.addView(nameText)
 
         val statusLabel = if (isOnline) "Online" else "Offline"
-        val preselectLabel = if (isPreselected) " • Last connected (Selected)" else ""
+        val preselectLabel = if (isPreselected) " • Last connected" else ""
         val subText =
             TextView(ctx).apply {
-                text = "${entry.host}:${entry.port} • $statusLabel$preselectLabel"
-                setTextColor(if (isOnline) Color.parseColor("#A7F3D0") else Color.parseColor("#999999"))
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                text = "${entry.host} • $statusLabel$preselectLabel"
+                setTextColor(if (isOnline) Color.parseColor("#4ADE80") else Color.parseColor("#94A3B8"))
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
             }
         titleCol.addView(subText)
-        topRow.addView(titleCol)
+        card.addView(titleCol)
+
+        val connectBtn =
+            MaterialButton(ctx).apply {
+                text = "Connect"
+                isAllCaps = false
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+                cornerRadius = dp(20)
+                minWidth = 0
+                minimumWidth = 0
+                setPadding(dp(16), 0, dp(16), 0)
+                if (isPreselected) {
+                    backgroundTintList = ColorStateList.valueOf(Color.parseColor("#10B981"))
+                    setTextColor(Color.WHITE)
+                } else {
+                    backgroundTintList = ColorStateList.valueOf(Color.parseColor("#1FFFFFFF"))
+                    strokeColor = ColorStateList.valueOf(Color.parseColor("#33FFFFFF"))
+                    strokeWidth = dp(1)
+                    setTextColor(Color.parseColor("#E2E8F0"))
+                }
+                layoutParams =
+                    LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        dp(38),
+                    ).apply {
+                        marginStart = dp(8)
+                    }
+                setOnClickListener {
+                    connectToEntry(entry)
+                }
+            }
+        card.addView(connectBtn)
 
         val forgetBtn =
             TextView(ctx).apply {
-                text = "Forget"
-                setTextColor(Color.parseColor("#fca5a5"))
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-                setPadding(dp(10), dp(6), dp(6), dp(6))
+                text = "✕"
+                setTextColor(Color.parseColor("#94A3B8"))
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+                setPadding(dp(12), dp(8), dp(6), dp(8))
                 setOnClickListener {
                     storage.remove(entry.hostId)
                     val remaining = storage.loadAll()
@@ -361,32 +403,7 @@ class WirelessTabController(
                     }
                 }
             }
-        topRow.addView(forgetBtn)
-        card.addView(topRow)
-
-        val connectBtn =
-            MaterialButton(ctx).apply {
-                text = if (isPreselected) "Connect to ${entry.macName}" else "Switch to ${entry.macName}"
-                isAllCaps = false
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
-                cornerRadius = dp(12)
-                backgroundTintList =
-                    ColorStateList.valueOf(
-                        if (isPreselected) Color.parseColor("#4CAF50") else Color.parseColor("#2E7D32"),
-                    )
-                setTextColor(Color.WHITE)
-                layoutParams =
-                    LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        dp(46),
-                    ).apply {
-                        topMargin = dp(10)
-                    }
-                setOnClickListener {
-                    connectToEntry(entry)
-                }
-            }
-        card.addView(connectBtn)
+        card.addView(forgetBtn)
 
         return card
     }

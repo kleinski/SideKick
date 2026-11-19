@@ -17,6 +17,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+<a id="1.2.9"></a>
+## [1.2.9] - 2026-11-19 — Android UI Redesign & Hardware Keyboard Stability
+
+### Added
+- **Redesigned Android Start Screen & In-Stream Settings:**
+  - Modernized the Home Screen (`settingsPanel`) into a compact dark frosted-glass card with a segmented `USB-C | Wi-Fi` header switch, streamlined Paired MacBooks rows (`Online`/`Offline` dot, `Connect` pill, quick unlink), side-by-side `Scan QR Code` / `Enter Pairing Code` buttons, and a subtle footer.
+  - Replaced the oversized Settings dialog with a compact **Overlay & Display Settings** modal matching the new Top Overlay Pill (removing obsolete corner-position and reset controls).
+
+### Fixed
+- **Hardware Keyboard Attach/Detach Disconnects (`AndroidManifest.xml`):** Added `smallestScreenSize|keyboard|keyboardHidden|navigation|uiMode` to `android:configChanges` so plugging or unplugging a physical keyboard no longer recreates `MainActivity` or drops the active stream.
+- **Wireless Auto-Connect Reliability (`WirelessTabController.kt`):** Added automatic connect when mDNS discovers a single paired Mac slightly after the initial scan, plus a single 1.5s retry during transient socket resets.
+
+---
+
 <a id="1.2.8"></a>
 ## [1.2.8] - 2026-11-19 — Unified Android Top Control Overlay
 

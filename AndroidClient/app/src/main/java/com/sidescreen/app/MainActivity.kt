@@ -736,12 +736,9 @@ class MainActivity : AppCompatActivity() {
         val hideSettingsSwitch = view.findViewById<SwitchMaterial>(R.id.hideSettingsSwitch)
         val opacitySlider = view.findViewById<Slider>(R.id.opacitySlider)
         val opacityValue = view.findViewById<TextView>(R.id.opacityValue)
-        val resetButton = view.findViewById<View>(R.id.resetPositionButton)
-        val resetSettingsBtn = view.findViewById<View>(R.id.resetSettingsButton)
         val disconnectButton = view.findViewById<View>(R.id.disconnectSettingsButton)
         val closeButton = view.findViewById<View>(R.id.closeButton)
-        val switchMacSection = view.findViewById<View>(R.id.switchMacSection)
-        val switchMacButtonsContainer = view.findViewById<android.widget.LinearLayout>(R.id.switchMacButtonsContainer)
+        val headerCloseButton = view.findViewById<View>(R.id.headerCloseButton)
         val securityBanner = view.findViewById<View>(R.id.connectionSecurityBanner)
         val securityTitle = view.findViewById<TextView>(R.id.connectionSecurityTitle)
         val securitySubtitle = view.findViewById<TextView>(R.id.connectionSecuritySubtitle)
@@ -755,7 +752,7 @@ class MainActivity : AppCompatActivity() {
                 if (activeClient.isEncrypted) {
                     securityTitle?.text = "🔒 End-to-End Encrypted (AES-256-GCM)"
                     securityTitle?.setTextColor(Color.parseColor("#4ade80"))
-                    securitySubtitle?.text = "Connected to $macLabel • Video & touch stream protected"
+                    securitySubtitle?.text = "Connected to $macLabel • Video, touch & keyboard protected"
                 } else {
                     securityTitle?.text = "🔓 Unencrypted Wireless Stream"
                     securityTitle?.setTextColor(Color.parseColor("#FFB74D"))
@@ -770,46 +767,8 @@ class MainActivity : AppCompatActivity() {
             securityBanner?.visibility = View.GONE
         }
 
-        // Only show Disconnect when actually streaming. Otherwise the button is
-        // a no-op and confuses users into clicking it twice.
         disconnectButton.visibility = if (isStreamingUi) View.VISIBLE else View.GONE
         if (demoActive) (disconnectButton as TextView).text = "Exit demo"
-
-        // Populate "Switch MacBook" section when streaming wirelessly and another paired Mac exists
-        val allPaired = pairedHostStorage.loadAll()
-        val currentActive = allPaired.firstOrNull()
-        val otherMacs = if (isConnected && !demoActive && allPaired.size > 1) allPaired.drop(1) else emptyList()
-        if (otherMacs.isNotEmpty() && switchMacSection != null && switchMacButtonsContainer != null) {
-            switchMacSection.visibility = View.VISIBLE
-            switchMacButtonsContainer.removeAllViews()
-            for (mac in otherMacs) {
-                val btn =
-                    MaterialButton(this).apply {
-                        text = "Switch to ${mac.macName} (${mac.host})"
-                        isAllCaps = false
-                        setTextColor(Color.WHITE)
-                        backgroundTintList = android.content.res.ColorStateList.valueOf(Color.parseColor("#2E7D32"))
-                        cornerRadius = (12 * resources.displayMetrics.density).toInt()
-                        setOnClickListener {
-                            dialog.dismiss()
-                            switchWirelessMac(mac, fromTakeover = false)
-                        }
-                    }
-                switchMacButtonsContainer.addView(btn)
-            }
-        } else {
-            switchMacSection?.visibility = View.GONE
-        }
-
-        // Position buttons (8 directions)
-        val cornerTopLeft = view.findViewById<MaterialButton>(R.id.cornerTopLeft)
-        val cornerTopRight = view.findViewById<MaterialButton>(R.id.cornerTopRight)
-        val cornerBottomLeft = view.findViewById<MaterialButton>(R.id.cornerBottomLeft)
-        val cornerBottomRight = view.findViewById<MaterialButton>(R.id.cornerBottomRight)
-        val positionTopCenter = view.findViewById<MaterialButton>(R.id.positionTopCenter)
-        val positionBottomCenter = view.findViewById<MaterialButton>(R.id.positionBottomCenter)
-        val positionCenterLeft = view.findViewById<MaterialButton>(R.id.positionCenterLeft)
-        val positionCenterRight = view.findViewById<MaterialButton>(R.id.positionCenterRight)
 
         // Load current settings
         showStatsSwitch.isChecked = prefs.showStatsOverlay
@@ -817,34 +776,6 @@ class MainActivity : AppCompatActivity() {
         opacitySlider.value = prefs.overlayOpacity
         opacityValue.text = "${(prefs.overlayOpacity * 100).toInt()}%"
 
-        // Highlight current position selection (8 positions)
-        // 0=BottomRight, 1=BottomLeft, 2=TopRight, 3=TopLeft
-        // 4=TopCenter, 5=BottomCenter, 6=CenterLeft, 7=CenterRight
-        fun updatePositionSelection(selectedPosition: Int) {
-            val buttons =
-                listOf(
-                    cornerBottomRight,
-                    cornerBottomLeft,
-                    cornerTopRight,
-                    cornerTopLeft,
-                    positionTopCenter,
-                    positionBottomCenter,
-                    positionCenterLeft,
-                    positionCenterRight,
-                )
-            buttons.forEachIndexed { index, button ->
-                if (index == selectedPosition) {
-                    button.backgroundTintList =
-                        android.content.res.ColorStateList
-                            .valueOf(0x334CAF50)
-                } else {
-                    button.backgroundTintList = null
-                }
-            }
-        }
-        updatePositionSelection(prefs.settingsButtonCorner)
-
-        // Setup listeners
         showStatsSwitch.setOnCheckedChangeListener { _, isChecked ->
             prefs.showStatsOverlay = isChecked
             updateOverlayVisibility(isChecked)
@@ -856,12 +787,11 @@ class MainActivity : AppCompatActivity() {
                 applySettingsButtonVisibility()
             }
             if (isChecked) {
-                android.widget.Toast
-                    .makeText(
-                        this,
-                        "Settings icon hidden — use the back gesture to reveal it",
-                        android.widget.Toast.LENGTH_LONG,
-                    ).show()
+                Toast.makeText(
+                    this,
+                    "Top overlay hidden — tap top handle or use Back to reveal",
+                    Toast.LENGTH_LONG,
+                ).show()
             }
         }
 
@@ -872,89 +802,22 @@ class MainActivity : AppCompatActivity() {
             opacityValue.text = "${(value * 100).toInt()}%"
         }
 
-        resetButton.setOnClickListener {
-            prefs.overlayX = -1f
-            prefs.overlayY = -1f
-            // Use displayMetrics for reliable positioning
-            val dm = resources.displayMetrics
-            binding.statusBar
-                .animate()
-                .x(dm.widthPixels - binding.statusBar.width - 48f)
-                .y(48f)
-                .setDuration(300)
-                .start()
-        }
-
-        // Position button listeners (8 directions)
-        cornerBottomRight.setOnClickListener {
-            prefs.settingsButtonCorner = 0
-            updatePositionSelection(0)
-            updateSettingsButtonPosition(0)
-        }
-
-        cornerBottomLeft.setOnClickListener {
-            prefs.settingsButtonCorner = 1
-            updatePositionSelection(1)
-            updateSettingsButtonPosition(1)
-        }
-
-        cornerTopRight.setOnClickListener {
-            prefs.settingsButtonCorner = 2
-            updatePositionSelection(2)
-            updateSettingsButtonPosition(2)
-        }
-
-        cornerTopLeft.setOnClickListener {
-            prefs.settingsButtonCorner = 3
-            updatePositionSelection(3)
-            updateSettingsButtonPosition(3)
-        }
-
-        positionTopCenter.setOnClickListener {
-            prefs.settingsButtonCorner = 4
-            updatePositionSelection(4)
-            updateSettingsButtonPosition(4)
-        }
-
-        positionBottomCenter.setOnClickListener {
-            prefs.settingsButtonCorner = 5
-            updatePositionSelection(5)
-            updateSettingsButtonPosition(5)
-        }
-
-        positionCenterLeft.setOnClickListener {
-            prefs.settingsButtonCorner = 6
-            updatePositionSelection(6)
-            updateSettingsButtonPosition(6)
-        }
-
-        positionCenterRight.setOnClickListener {
-            prefs.settingsButtonCorner = 7
-            updatePositionSelection(7)
-            updateSettingsButtonPosition(7)
-        }
-
-        resetSettingsBtn.setOnClickListener {
-            prefs.settingsButtonCorner = 0
-            updatePositionSelection(0)
-            updateSettingsButtonPosition(0)
-        }
-
         disconnectButton.setOnClickListener {
             dialog.dismiss()
             if (demoActive) stopDemo() else disconnect()
         }
 
-        closeButton.setOnClickListener {
-            dialog.dismiss()
-        }
+        closeButton.setOnClickListener { dialog.dismiss() }
+        headerCloseButton?.setOnClickListener { dialog.dismiss() }
 
         dialog.show()
 
-        // Cap dialog height to 85% of screen so content scrolls on smaller screens / landscape
+        // Size compactly for tablets (max 480dp wide) and wrap height cleanly
         dialog.window?.let { win ->
-            val maxH = (resources.displayMetrics.heightPixels * 0.85).toInt()
-            win.setLayout(WindowManager.LayoutParams.MATCH_PARENT, maxH)
+            val dm = resources.displayMetrics
+            val maxW = (480 * dm.density).toInt()
+            val targetW = minOf((dm.widthPixels - 48 * dm.density).toInt(), maxW)
+            win.setLayout(targetW, WindowManager.LayoutParams.WRAP_CONTENT)
         }
     }
 
