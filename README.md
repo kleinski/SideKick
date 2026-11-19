@@ -147,10 +147,7 @@ To upgrade later:
 brew upgrade --cask kleinski/sidekick/sidekick
 ```
 
-> Since SideKick is built without a paid Apple Developer ID notarization certificate, clear the quarantine attribute once after installing if macOS Gatekeeper prompts you (or pass `--no-quarantine` to `brew install`):
-> ```bash
-> xattr -cr /Applications/SideKick.app
-> ```
+> Quarantine attributes (`com.apple.quarantine`) are cleared automatically during Homebrew installation via `postflight`.
 
 ### Download from SideKick GitHub Releases
 
