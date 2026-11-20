@@ -144,6 +144,35 @@ class MainActivity : AppCompatActivity() {
         startChecklistUpdates()
         setupModeToggle()
         setupWirelessController()
+        setupVersionAndAutoConnect()
+    }
+
+    private fun appVersionName(): String =
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                packageManager.getPackageInfo(
+                    packageName,
+                    android.content.pm.PackageManager.PackageInfoFlags.of(0),
+                ).versionName ?: "1.0"
+            } else {
+                @Suppress("DEPRECATION")
+                packageManager.getPackageInfo(packageName, 0).versionName ?: "1.0"
+            }
+        } catch (_: Exception) {
+            "1.0"
+        }
+
+    private fun setupVersionAndAutoConnect() {
+        binding.appVersionText.text = "v${appVersionName()}"
+        binding.autoConnectSwitch.isChecked = prefs.autoConnectEnabled
+        binding.autoConnectSwitch.setOnCheckedChangeListener { _, isChecked ->
+            if (prefs.autoConnectEnabled != isChecked) {
+                prefs.autoConnectEnabled = isChecked
+                if (isChecked && prefs.connectionMode == ConnectionMode.WIRELESS && !isStreamingUi) {
+                    wirelessController.scanAndRefreshMacList(allowAutoConnect = true)
+                }
+            }
+        }
     }
 
     private fun setupModeToggle() {
@@ -734,6 +763,8 @@ class MainActivity : AppCompatActivity() {
         val view = dialog.findViewById<View>(android.R.id.content)
         val showStatsSwitch = view.findViewById<SwitchMaterial>(R.id.showStatsSwitch)
         val hideSettingsSwitch = view.findViewById<SwitchMaterial>(R.id.hideSettingsSwitch)
+        val dialogAutoConnectSwitch = view.findViewById<SwitchMaterial>(R.id.dialogAutoConnectSwitch)
+        val settingsVersionText = view.findViewById<TextView>(R.id.settingsVersionText)
         val opacitySlider = view.findViewById<Slider>(R.id.opacitySlider)
         val opacityValue = view.findViewById<TextView>(R.id.opacityValue)
         val disconnectButton = view.findViewById<View>(R.id.disconnectSettingsButton)
@@ -771,10 +802,17 @@ class MainActivity : AppCompatActivity() {
         if (demoActive) (disconnectButton as TextView).text = "Exit demo"
 
         // Load current settings
+        settingsVersionText?.text = "v${appVersionName()}"
         showStatsSwitch.isChecked = prefs.showStatsOverlay
         hideSettingsSwitch.isChecked = prefs.hideSettingsButton
+        dialogAutoConnectSwitch?.isChecked = prefs.autoConnectEnabled
         opacitySlider.value = prefs.overlayOpacity
         opacityValue.text = "${(prefs.overlayOpacity * 100).toInt()}%"
+
+        dialogAutoConnectSwitch?.setOnCheckedChangeListener { _, isChecked ->
+            prefs.autoConnectEnabled = isChecked
+            binding.autoConnectSwitch.isChecked = isChecked
+        }
 
         showStatsSwitch.setOnCheckedChangeListener { _, isChecked ->
             prefs.showStatsOverlay = isChecked
@@ -1289,6 +1327,7 @@ class MainActivity : AppCompatActivity() {
                         log("📋 Restarting checklist updates")
                         startChecklistUpdates()
                     }
+                    clearVideoSurface()
                 }
             }
         }
@@ -1564,8 +1603,9 @@ class MainActivity : AppCompatActivity() {
 
                             binding.settingsPanel.visibility = View.VISIBLE
                             hideSoftKeyboard()
-        binding.overlayRestoreHandle.visibility = View.GONE
+                            binding.overlayRestoreHandle.visibility = View.GONE
                             binding.statusBar.visibility = View.GONE
+                            clearVideoSurface()
 
                             // Restart checklist updates immediately
                             log("📋 Restarting checklist updates")
@@ -1646,10 +1686,22 @@ class MainActivity : AppCompatActivity() {
         displayFlipHorizontal = false
         displayFlipVertical = false
         runOnUiThread {
-            binding.textureView.visibility = View.GONE
-            applyTextureTransform()
+            clearVideoSurface()
         }
         log("Disconnected")
+    }
+
+    private fun clearVideoSurface() {
+        setSurfaceAspect(null)
+        binding.textureView.visibility = View.GONE
+        applyTextureTransform()
+        // Recreate the SurfaceView surface so the last Mac desktop frame doesn't linger behind the home card
+        binding.surfaceView.visibility = View.GONE
+        binding.surfaceView.post {
+            if (!isConnected && !demoActive) {
+                binding.surfaceView.visibility = View.VISIBLE
+            }
+        }
     }
 
     private fun startPingTimer() {

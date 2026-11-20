@@ -86,6 +86,7 @@ class WirelessTabController(
     enum class State { FIRST_TIME, CONNECTING, CONNECTED, PAIRED_IDLE, REPAIR_NEEDED, PERM_DENIED }
 
     private var state: State = State.FIRST_TIME
+    private val prefs = PreferencesManager(activity)
     private var onlineHostIds: Set<String> = emptySet()
     private var activeEntry: PairedHostStorage.Entry? = null
     private var scanJob: Job? = null
@@ -162,7 +163,7 @@ class WirelessTabController(
                     if (changed || !mdnsOnline.all { it in onlineHostIds }) {
                         onlineHostIds = onlineHostIds + mdnsOnline
                         val onlineMacs = all.filter { it.hostId in onlineHostIds }
-                        if (!suppressAutoConnect && onlineMacs.size == 1) {
+                        if (!suppressAutoConnect && prefs.autoConnectEnabled && onlineMacs.size == 1) {
                             val soleMac = onlineMacs.first()
                             views.scanStatusText?.text = "${soleMac.macName} is online — connecting automatically…"
                             connectToEntry(soleMac)
@@ -222,7 +223,7 @@ class WirelessTabController(
                 views.idleMacIp.text = "${primary.host}:${primary.port}"
                 transition(State.PAIRED_IDLE)
                 renderPairedMacsList(all)
-                scanAndRefreshMacList(allowAutoConnect = !suppressAutoConnect)
+                scanAndRefreshMacList(allowAutoConnect = !suppressAutoConnect && prefs.autoConnectEnabled)
             }
         }
     }
@@ -245,7 +246,7 @@ class WirelessTabController(
                     val onlineMacs = refreshedEntries.filter { it.hostId in reachableIds }
 
                     when {
-                        onlineMacs.size == 1 && allowAutoConnect -> {
+                        onlineMacs.size == 1 && allowAutoConnect && prefs.autoConnectEnabled -> {
                             val soleMac = onlineMacs.first()
                             views.scanStatusText?.text = "${soleMac.macName} is online — connecting automatically…"
                             connectToEntry(soleMac)
@@ -264,7 +265,7 @@ class WirelessTabController(
                             views.scanStatusText?.text =
                                 "No paired MacBook reachable yet. Make sure SideKick is running on your Mac."
                             renderPairedMacsList(refreshedEntries)
-                            if (allowAutoConnect && !autoConnectRetryPending) {
+                            if (allowAutoConnect && prefs.autoConnectEnabled && !autoConnectRetryPending) {
                                 autoConnectRetryPending = true
                                 scope.launch {
                                     delay(1_500L)

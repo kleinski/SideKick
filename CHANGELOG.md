@@ -17,6 +17,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+<a id="1.2.10"></a>
+## [1.2.10] - 2026-11-20 — Android Auto-Connect Toggle, Version Badge & Surface Clear
+
+### Added
+- **Auto-Connect Toggle on Android:** Added a persistent **Auto-Connect** switch on both the Home Screen (*Paired MacBooks*) and inside *Overlay & Display Settings*, allowing you to disable automatic connection when a single Mac is online.
+- **Visible App Version on Android:** Displays the current app version badge (`v1.2.10`) in the Home Screen header and inside *Overlay & Display Settings*.
+
+### Fixed
+- **Stale Desktop Frame on Disconnect:** `clearVideoSurface()` now resets the `SurfaceView` on every disconnect (`disconnect()` and `onConnectionStatus(false)`), so the last streamed Mac desktop frame no longer lingers behind the Home Screen card.
+
+---
+
 <a id="1.2.9"></a>
 ## [1.2.9] - 2026-11-19 — Android UI Redesign & Hardware Keyboard Stability
 
