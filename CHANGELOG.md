@@ -17,6 +17,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+<a id="1.2.11"></a>
+## [1.2.11] - 2026-11-20 — Reliable Virtual Display Teardown on App Kill
+
+### Fixed
+- **Clean Virtual Display Teardown on Android "Close All Apps":**
+  - Added `DisconnectOnTaskRemovedService` (`onTaskRemoved`) on Android to immediately close the active stream socket when the app is swiped away or killed from Recents.
+  - Added a 6-second client liveness watchdog in `StreamingServer.swift` on macOS: if no ping or input arrives from the tablet for >6 seconds (e.g. hard process kill, Wi-Fi drop, or battery death), the Mac closes the stale connection and removes the virtual display so all windows return to the Mac display.
+
+---
+
 <a id="1.2.10"></a>
 ## [1.2.10] - 2026-11-20 — Android Auto-Connect Toggle, Version Badge & Surface Clear
 

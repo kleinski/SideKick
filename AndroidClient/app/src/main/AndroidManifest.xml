@@ -30,6 +30,11 @@
             android:name=".QRScannerActivity"
             android:exported="false"
             android:screenOrientation="portrait" />
+
+        <service
+            android:name=".DisconnectOnTaskRemovedService"
+            android:exported="false"
+            android:stopWithTask="false" />
     </application>
 
 </manifest>

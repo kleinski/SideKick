@@ -163,6 +163,9 @@ class MainActivity : AppCompatActivity() {
         }
 
     private fun setupVersionAndAutoConnect() {
+        DisconnectOnTaskRemovedService.onTaskRemovedCallback = {
+            streamClient?.disconnect()
+        }
         binding.appVersionText.text = "v${appVersionName()}"
         binding.autoConnectSwitch.isChecked = prefs.autoConnectEnabled
         binding.autoConnectSwitch.setOnCheckedChangeListener { _, isChecked ->
@@ -1274,6 +1277,10 @@ class MainActivity : AppCompatActivity() {
                         binding.securityText.setTextColor(Color.parseColor("#00BCD4"))
                     }
                     startPingTimer()
+                    try {
+                        startService(Intent(this@MainActivity, DisconnectOnTaskRemovedService::class.java))
+                    } catch (_: Exception) {
+                    }
                     stopChecklistUpdates()
                     enableFullscreenMode()
                     binding.settingsPanel.visibility = View.GONE
@@ -1580,6 +1587,10 @@ class MainActivity : AppCompatActivity() {
                             binding.securityText.setTextColor(Color.parseColor("#00BCD4"))
                             // Start periodic ping for latency measurement
                             startPingTimer()
+                    try {
+                        startService(Intent(this@MainActivity, DisconnectOnTaskRemovedService::class.java))
+                    } catch (_: Exception) {
+                    }
 
                             // Stop checklist updates when connected (prevents socket conflicts)
                             stopChecklistUpdates()
@@ -1677,6 +1688,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun disconnect() {
         stopPingTimer()
+        try {
+            stopService(Intent(this, DisconnectOnTaskRemovedService::class.java))
+        } catch (_: Exception) {
+        }
         streamClient?.disconnect()
         // Reset display config so next connect defers decoder init until config arrives
         displayWidth = 0

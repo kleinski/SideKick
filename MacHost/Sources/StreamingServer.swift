@@ -295,6 +295,9 @@ class StreamingServer {
     private var desktopWidth = 0
     private var desktopHeight = 0
     private var inputBuffer = Data()
+    private let livenessLock = NSLock()
+    private var lastClientActivityNs: UInt64 = 0
+    private var livenessTimer: DispatchSourceTimer?
     /// Active AES-256-GCM session cipher when connected via encrypted wireless ("SSWE").
     private var sessionCipher: WirelessCrypto.SessionCipher?
     /// Serializes post-handshake encryption sequence numbering with NWConnection.send enqueueing.
@@ -414,6 +417,7 @@ class StreamingServer {
             case .failed(let error):
                 debugLog("Connection failed: \(error)")
                 if self.connection === conn {
+                    self.stopLivenessWatchdog()
                     self.connection = nil
                     self.connectionReady = false
                     self.onClientDisconnected?()
@@ -421,6 +425,7 @@ class StreamingServer {
             case .cancelled:
                 debugLog("Connection cancelled")
                 if self.connection === conn {
+                    self.stopLivenessWatchdog()
                     self.connection = nil
                     self.connectionReady = false
                     self.onClientDisconnected?()
@@ -546,12 +551,46 @@ class StreamingServer {
         debugLog("Client connected - sending display config first")
         sendDisplaySize()
         connectionReady = true
+        recordClientActivity()
+        startLivenessWatchdog()
         if clientSupportsKeyboard {
             let msg = Data([WireMessage.keyboardPermission, keyboardEnabled ? 1 : 0])
             sendPayload(on: conn, msg)
         }
         debugLog("Connection ready for frames (metadata=\(clientSupportsFrameMetadata ? "on" : "off"), codec=\(codec))")
         onClientConnected?()
+    }
+
+    private func recordClientActivity() {
+        let now = DispatchTime.now().uptimeNanoseconds
+        livenessLock.lock()
+        lastClientActivityNs = now
+        livenessLock.unlock()
+    }
+
+    private func startLivenessWatchdog() {
+        stopLivenessWatchdog()
+        let timer = DispatchSource.makeTimerSource(queue: networkQueue)
+        timer.schedule(deadline: .now() + .seconds(2), repeating: .seconds(2))
+        timer.setEventHandler { [weak self] in
+            guard let self = self, self.connectionReady, !self.isStopped, let conn = self.connection else { return }
+            self.livenessLock.lock()
+            let last = self.lastClientActivityNs
+            self.livenessLock.unlock()
+            let now = DispatchTime.now().uptimeNanoseconds
+            if last > 0 && now >= last && (now - last) > 6_000_000_000 {
+                debugLog("Client liveness timeout (>6s without ping/input) — closing stale connection")
+                self.stopLivenessWatchdog()
+                conn.cancel()
+            }
+        }
+        livenessTimer = timer
+        timer.resume()
+    }
+
+    private func stopLivenessWatchdog() {
+        livenessTimer?.cancel()
+        livenessTimer = nil
     }
 
     func setKeyboardEnabled(_ enabled: Bool) {
@@ -859,6 +898,7 @@ class StreamingServer {
             }
 
             if let data = data, !data.isEmpty {
+                self.recordClientActivity()
                 if let cipher = self.sessionCipher {
                     do {
                         let plaintext = try cipher.openStreamChunk(data)
@@ -1275,6 +1315,7 @@ class StreamingServer {
             self.isReceiving = false
             self.connectionReady = false
             self.startupHeld = false
+            self.stopLivenessWatchdog()
             self.sendLock.lock()
             self.sessionCipher = nil
             self.sendLock.unlock()
@@ -1287,6 +1328,7 @@ class StreamingServer {
     func stop() {
         isStopped = true
         isReceiving = false
+        stopLivenessWatchdog()
 
         // Wait for pending operations before cancelling
         frameQueue.sync {}
