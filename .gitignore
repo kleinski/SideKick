@@ -65,3 +65,4 @@ AndroidClient/ktlint
 
 # Local toolchain (portable JDK & Android SDK)
 .toolchain/
+*.pyc
