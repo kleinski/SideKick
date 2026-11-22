@@ -680,6 +680,39 @@ class StreamClient(
         }
     }
 
+    fun sendKeyPress(
+        keyCode: Int,
+        modifiers: Int,
+    ) {
+        if (!isConnected) return
+        touchScope.launch {
+            try {
+                val down = ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN).apply {
+                    put(MESSAGE_KEYBOARD_EVENT.toByte())
+                    put(0.toByte())
+                    put(0.toByte())
+                    put((modifiers and 0xFF).toByte())
+                    putInt(keyCode)
+                }.array()
+                val up = ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN).apply {
+                    put(MESSAGE_KEYBOARD_EVENT.toByte())
+                    put(0.toByte())
+                    put(1.toByte())
+                    put((modifiers and 0xFF).toByte())
+                    putInt(keyCode)
+                }.array()
+                synchronized(outputLock) {
+                    outputStream?.let { out ->
+                        out.write(down)
+                        out.write(up)
+                        out.flush()
+                    }
+                }
+            } catch (_: Exception) {
+            }
+        }
+    }
+
     fun sendKeyboardText(text: String) {
         if (!isConnected || text.isEmpty()) return
         val bytes = text.toByteArray(Charsets.UTF_8)

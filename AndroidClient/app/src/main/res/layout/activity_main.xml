@@ -202,6 +202,37 @@
                     android:textSize="9sp" />
             </LinearLayout>
 
+            <!-- 1b. Special Keys (⌘ / Esc / Shortcuts) -->
+            <LinearLayout
+                android:id="@+id/specialKeysButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:layout_marginEnd="10dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:id="@+id/specialKeysButtonBadge"
+                    android:layout_width="34dp"
+                    android:layout_height="34dp"
+                    android:gravity="center"
+                    android:background="@drawable/overlay_action_bg"
+                    android:text="⌘"
+                    android:textColor="#FFFFFF"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="Keys"
+                    android:textColor="#CCFFFFFF"
+                    android:textSize="9sp" />
+            </LinearLayout>
+
             <!-- 2. Switch Mac -->
             <LinearLayout
                 android:id="@+id/switchMacButton"
@@ -331,6 +362,231 @@
             android:layout_marginTop="6dp"
             android:background="@drawable/overlay_handle_bg" />
     </FrameLayout>
+
+    <!-- Vertical Special Keys Strip (toggled from Keys button in top overlay) -->
+    <ScrollView
+        android:id="@+id/specialKeysPanel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/overlay_pill_bg"
+        android:elevation="12dp"
+        android:padding="8dp"
+        android:scrollbars="none"
+        android:visibility="gone"
+        app:layout_constrainedHeight="true"
+        app:layout_constraintTop_toBottomOf="@id/statusBar"
+        app:layout_constraintEnd_toEndOf="@id/statusBar"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintVertical_bias="0.0">
+
+        <LinearLayout
+            android:layout_width="112dp"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center_horizontal">
+
+            <!-- Sticky Modifiers -->
+            <TextView
+                android:id="@+id/modCmdBtn"
+                android:layout_width="match_parent"
+                android:layout_height="34dp"
+                android:layout_marginBottom="4dp"
+                android:background="@drawable/settings_group_bg"
+                android:gravity="center"
+                android:text="⌘ Cmd"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/modOptBtn"
+                android:layout_width="match_parent"
+                android:layout_height="34dp"
+                android:layout_marginBottom="4dp"
+                android:background="@drawable/settings_group_bg"
+                android:gravity="center"
+                android:text="⌥ Option"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/modCtrlBtn"
+                android:layout_width="match_parent"
+                android:layout_height="34dp"
+                android:layout_marginBottom="4dp"
+                android:background="@drawable/settings_group_bg"
+                android:gravity="center"
+                android:text="⌃ Ctrl"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/modShiftBtn"
+                android:layout_width="match_parent"
+                android:layout_height="34dp"
+                android:layout_marginBottom="6dp"
+                android:background="@drawable/settings_group_bg"
+                android:gravity="center"
+                android:text="⇧ Shift"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginBottom="6dp"
+                android:background="#26FFFFFF" />
+
+            <!-- Missing System & Navigation Keys -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="4dp">
+
+                <TextView
+                    android:id="@+id/keyEscBtn"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="32dp"
+                    android:layout_marginEnd="3dp"
+                    android:background="@drawable/settings_group_bg"
+                    android:gravity="center"
+                    android:text="Esc"
+                    android:textColor="#E2E8F0"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/keyTabBtn"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="32dp"
+                    android:layout_marginStart="3dp"
+                    android:background="@drawable/settings_group_bg"
+                    android:gravity="center"
+                    android:text="Tab"
+                    android:textColor="#E2E8F0"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/keyUpBtn"
+                android:layout_width="42dp"
+                android:layout_height="30dp"
+                android:layout_marginBottom="3dp"
+                android:background="@drawable/settings_group_bg"
+                android:gravity="center"
+                android:text="↑"
+                android:textColor="#E2E8F0"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="4dp">
+
+                <TextView
+                    android:id="@+id/keyLeftBtn"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="30dp"
+                    android:layout_marginEnd="2dp"
+                    android:background="@drawable/settings_group_bg"
+                    android:gravity="center"
+                    android:text="←"
+                    android:textColor="#E2E8F0"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/keyDownBtn"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="30dp"
+                    android:layout_marginHorizontal="2dp"
+                    android:background="@drawable/settings_group_bg"
+                    android:gravity="center"
+                    android:text="↓"
+                    android:textColor="#E2E8F0"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/keyRightBtn"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="30dp"
+                    android:layout_marginStart="2dp"
+                    android:background="@drawable/settings_group_bg"
+                    android:gravity="center"
+                    android:text="→"
+                    android:textColor="#E2E8F0"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/keyDelBtn"
+                android:layout_width="match_parent"
+                android:layout_height="30dp"
+                android:layout_marginBottom="6dp"
+                android:background="@drawable/settings_group_bg"
+                android:gravity="center"
+                android:text="Del ⌦"
+                android:textColor="#E2E8F0"
+                android:textSize="11sp" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginBottom="6dp"
+                android:background="#26FFFFFF" />
+
+            <!-- 1-Tap Mac Troubleshooting Shortcuts -->
+            <TextView
+                android:id="@+id/shortcutSpotlightBtn"
+                android:layout_width="match_parent"
+                android:layout_height="32dp"
+                android:layout_marginBottom="4dp"
+                android:background="@drawable/settings_group_bg"
+                android:gravity="center"
+                android:text="⌘ Space"
+                android:textColor="#93C5FD"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/shortcutAppSwitchBtn"
+                android:layout_width="match_parent"
+                android:layout_height="32dp"
+                android:layout_marginBottom="4dp"
+                android:background="@drawable/settings_group_bg"
+                android:gravity="center"
+                android:text="⌘ Tab"
+                android:textColor="#93C5FD"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/shortcutForceQuitBtn"
+                android:layout_width="match_parent"
+                android:layout_height="32dp"
+                android:background="@drawable/settings_group_bg"
+                android:gravity="center"
+                android:text="⌘⌥ Esc"
+                android:textColor="#FCA5A5"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+    </ScrollView>
 
     <!-- Invisible 1x1 IME proxy for on-screen keyboard input -->
     <com.sidescreen.app.KeyboardInputProxyView

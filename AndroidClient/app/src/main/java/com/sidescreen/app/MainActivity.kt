@@ -105,6 +105,7 @@ class MainActivity : AppCompatActivity() {
     /** True while video is on screen — a real session or the demo. Drives the streaming chrome. */
     private val isStreamingUi get() = isConnected || demoActive
     private var keyboardAllowedOnMac = true
+    private var activeStickyModifiers = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -867,13 +868,90 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateKeyboardButtonState() {
-        binding.keyboardButton.visibility =
-            if (isConnected && keyboardAllowedOnMac) View.VISIBLE else View.GONE
+        val visible = isConnected && keyboardAllowedOnMac
+        binding.keyboardButton.visibility = if (visible) View.VISIBLE else View.GONE
+        binding.specialKeysButton.visibility = if (visible) View.VISIBLE else View.GONE
         binding.keyboardButton.alpha = 1.0f
-        if (!keyboardAllowedOnMac) {
+        if (!visible) {
             hideSoftKeyboard()
+            binding.specialKeysPanel.visibility = View.GONE
+            clearStickyModifiers()
         }
     }
+
+    private fun toggleSpecialKeysPanel() {
+        if (!keyboardAllowedOnMac) return
+        val show = binding.specialKeysPanel.visibility != View.VISIBLE
+        binding.specialKeysPanel.visibility = if (show) View.VISIBLE else View.GONE
+        updateSpecialKeysBadge()
+    }
+
+    private fun toggleStickyModifier(mask: Int) {
+        activeStickyModifiers = activeStickyModifiers xor mask
+        updateModifierButtonsUi()
+    }
+
+    private fun clearStickyModifiers() {
+        if (activeStickyModifiers != 0) {
+            activeStickyModifiers = 0
+            updateModifierButtonsUi()
+        }
+    }
+
+    private fun updateModifierButtonsUi() {
+        val pairs =
+            listOf(
+                binding.modCmdBtn to 8,
+                binding.modOptBtn to 4,
+                binding.modCtrlBtn to 2,
+                binding.modShiftBtn to 1,
+            )
+        for ((btn, mask) in pairs) {
+            if ((activeStickyModifiers and mask) != 0) {
+                btn.setBackgroundColor(Color.parseColor("#2563EB"))
+            } else {
+                btn.setBackgroundResource(R.drawable.settings_group_bg)
+            }
+        }
+        updateSpecialKeysBadge()
+    }
+
+    private fun updateSpecialKeysBadge() {
+        val panelOpen = binding.specialKeysPanel.visibility == View.VISIBLE
+        val hasMods = activeStickyModifiers != 0
+        binding.specialKeysButtonBadge.setBackgroundResource(
+            if (panelOpen || hasMods) R.drawable.overlay_action_bg else R.drawable.overlay_action_bg,
+        )
+        binding.specialKeysButtonBadge.setTextColor(
+            if (hasMods) Color.parseColor("#60A5FA") else Color.WHITE,
+        )
+    }
+
+    private fun sendSpecialKey(keyCode: Int) {
+        if (!isConnected || !keyboardAllowedOnMac) return
+        streamClient?.sendKeyPress(keyCode, activeStickyModifiers)
+        clearStickyModifiers()
+    }
+
+    private fun asciiCharToKeyCode(ch: Char): Int? =
+        when (ch.lowercaseChar()) {
+            in 'a'..'z' -> KeyEvent.KEYCODE_A + (ch.lowercaseChar() - 'a')
+            in '0'..'9' -> KeyEvent.KEYCODE_0 + (ch - '0')
+            ' ' -> KeyEvent.KEYCODE_SPACE
+            '-' -> KeyEvent.KEYCODE_MINUS
+            '=' -> KeyEvent.KEYCODE_EQUALS
+            '[' -> KeyEvent.KEYCODE_LEFT_BRACKET
+            ']' -> KeyEvent.KEYCODE_RIGHT_BRACKET
+            '\\' -> KeyEvent.KEYCODE_BACKSLASH
+            ';' -> KeyEvent.KEYCODE_SEMICOLON
+            '\'' -> KeyEvent.KEYCODE_APOSTROPHE
+            ',' -> KeyEvent.KEYCODE_COMMA
+            '.' -> KeyEvent.KEYCODE_PERIOD
+            '/' -> KeyEvent.KEYCODE_SLASH
+            '`' -> KeyEvent.KEYCODE_GRAVE
+            '\n' -> KeyEvent.KEYCODE_ENTER
+            else -> null
+        }
 
     private fun showSwitchMacMenu() {
         val allPaired = pairedHostStorage.loadAll()
@@ -933,12 +1011,46 @@ class MainActivity : AppCompatActivity() {
             toggleSoftKeyboard()
         }
 
+        binding.specialKeysButton.setOnClickListener {
+            toggleSpecialKeysPanel()
+        }
+
+        binding.modCmdBtn.setOnClickListener { toggleStickyModifier(8) }
+        binding.modOptBtn.setOnClickListener { toggleStickyModifier(4) }
+        binding.modCtrlBtn.setOnClickListener { toggleStickyModifier(2) }
+        binding.modShiftBtn.setOnClickListener { toggleStickyModifier(1) }
+
+        binding.keyEscBtn.setOnClickListener { sendSpecialKey(KeyEvent.KEYCODE_ESCAPE) }
+        binding.keyTabBtn.setOnClickListener { sendSpecialKey(KeyEvent.KEYCODE_TAB) }
+        binding.keyDelBtn.setOnClickListener { sendSpecialKey(KeyEvent.KEYCODE_FORWARD_DEL) }
+        binding.keyUpBtn.setOnClickListener { sendSpecialKey(KeyEvent.KEYCODE_DPAD_UP) }
+        binding.keyDownBtn.setOnClickListener { sendSpecialKey(KeyEvent.KEYCODE_DPAD_DOWN) }
+        binding.keyLeftBtn.setOnClickListener { sendSpecialKey(KeyEvent.KEYCODE_DPAD_LEFT) }
+        binding.keyRightBtn.setOnClickListener { sendSpecialKey(KeyEvent.KEYCODE_DPAD_RIGHT) }
+
+        binding.shortcutSpotlightBtn.setOnClickListener {
+            if (isConnected && keyboardAllowedOnMac) {
+                streamClient?.sendKeyPress(KeyEvent.KEYCODE_SPACE, 8)
+            }
+        }
+        binding.shortcutAppSwitchBtn.setOnClickListener {
+            if (isConnected && keyboardAllowedOnMac) {
+                streamClient?.sendKeyPress(KeyEvent.KEYCODE_TAB, 8)
+            }
+        }
+        binding.shortcutForceQuitBtn.setOnClickListener {
+            if (isConnected && keyboardAllowedOnMac) {
+                streamClient?.sendKeyPress(KeyEvent.KEYCODE_ESCAPE, 8 or 4)
+            }
+        }
+
         binding.switchMacButton.setOnClickListener {
             showSwitchMacMenu()
         }
 
         binding.hideOverlayButton.setOnClickListener {
             binding.statusBar.visibility = View.GONE
+            binding.specialKeysPanel.visibility = View.GONE
             binding.overlayRestoreHandle.visibility = View.VISIBLE
             revealHandler.removeCallbacks(hideSettingsButtonRunnable)
         }
@@ -958,7 +1070,17 @@ class MainActivity : AppCompatActivity() {
 
         binding.keyboardInputProxy.onTextCommitted = { text ->
             if (isConnected && keyboardAllowedOnMac) {
-                streamClient?.sendKeyboardText(text)
+                if (activeStickyModifiers != 0 && text.length == 1) {
+                    val keyCode = asciiCharToKeyCode(text[0])
+                    if (keyCode != null) {
+                        streamClient?.sendKeyPress(keyCode, activeStickyModifiers)
+                        clearStickyModifiers()
+                    } else {
+                        streamClient?.sendKeyboardText(text)
+                    }
+                } else {
+                    streamClient?.sendKeyboardText(text)
+                }
             }
         }
         binding.keyboardInputProxy.onBackspace = { count ->
@@ -1010,6 +1132,7 @@ class MainActivity : AppCompatActivity() {
         Runnable {
             if (isStreamingUi && prefs.hideSettingsButton) {
                 binding.statusBar.visibility = View.GONE
+                binding.specialKeysPanel.visibility = View.GONE
                 binding.overlayRestoreHandle.visibility = View.VISIBLE
             }
         }
@@ -2061,7 +2184,7 @@ class MainActivity : AppCompatActivity() {
             return false
         }
 
-        var mods = 0
+        var mods = activeStickyModifiers
         if (event.isShiftPressed) mods = mods or 1
         if (event.isCtrlPressed) mods = mods or 2
         if (event.isAltPressed) mods = mods or 4
@@ -2084,6 +2207,8 @@ class MainActivity : AppCompatActivity() {
         if (!hasCommandMods && !isSpecialControlKey && unicode != 0) {
             if (event.action == KeyEvent.ACTION_DOWN) {
                 streamClient?.sendKeyboardText(String(Character.toChars(unicode)))
+            } else if (event.action == KeyEvent.ACTION_UP && activeStickyModifiers != 0) {
+                clearStickyModifiers()
             }
             return true
         }
@@ -2093,6 +2218,12 @@ class MainActivity : AppCompatActivity() {
             isDown = event.action == KeyEvent.ACTION_DOWN,
             modifiers = mods,
         )
+        if (event.action == KeyEvent.ACTION_UP &&
+            activeStickyModifiers != 0 &&
+            !KeyEvent.isModifierKey(event.keyCode)
+        ) {
+            clearStickyModifiers()
+        }
         return true
     }
 }

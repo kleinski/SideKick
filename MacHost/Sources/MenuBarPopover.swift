@@ -153,6 +153,24 @@ struct MenuBarPopoverView: View {
                 .frame(width: 130)
             }
 
+            // Display Rotation Selector
+            HStack(spacing: 8) {
+                Image(systemName: "rotate.right")
+                    .frame(width: 16)
+                    .foregroundColor(.accentColor)
+                Text("Rotation")
+                    .font(.system(size: 12, weight: .medium))
+                Spacer()
+                Picker("", selection: $settings.rotation) {
+                    Text("0°").tag(0)
+                    Text("90°").tag(90)
+                    Text("180°").tag(180)
+                    Text("270°").tag(270)
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 170)
+            }
+
             // Touch Control Quick Toggle
             toggleRow(
                 icon: "hand.tap",
