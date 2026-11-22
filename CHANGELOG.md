@@ -17,6 +17,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+<a id="1.2.12"></a>
+## [1.2.12] - 2026-11-22 — Android Special Keys Strip & Menu Bar Rotation Picker
+
+### Added
+- **Vertical Special Keys & Mac Shortcuts Strip on Android:**
+  - Added a `⌘` button in the top control overlay that toggles a vertical floating panel (`specialKeysPanel`) directly below it.
+  - Includes one-shot sticky modifiers (`⌘ Cmd`, `⌥ Opt`, `⌃ Ctrl`, `⇧ Shift`), missing navigation/system keys (`Esc`, `Tab`, `Del ⌦`, `↑`, `←`, `↓`, `→`), and 1-tap Mac troubleshooting shortcuts (`⌘ Space` Spotlight, `⌘ Tab` App Switcher, `⌘⌥ Esc` Force Quit).
+  - Sticky modifiers automatically combine with the next virtual keyboard character, special key, or hardware keyboard event and reset afterwards.
+- **Display Rotation Picker in macOS Menu Bar Popover:**
+  - Added a segmented `Rotation` control (`0°`, `90°`, `180°`, `270°`) to `MenuBarPopover.swift` right below the `Mode` picker, applying display rotation changes live to the connected Android tablet.
+
+---
+
 <a id="1.2.11"></a>
 ## [1.2.11] - 2026-11-20 — Reliable Virtual Display Teardown on App Kill
 
