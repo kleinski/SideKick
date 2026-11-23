@@ -77,6 +77,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// The effective refresh rate the running pipeline was built with — lets
     /// the refresh-rate observer skip restarts that would change nothing.
     private var lastAppliedRefreshRate: Int?
+    /// Whether the running virtual display was built in portrait orientation (90° or 270°).
+    private var lastAppliedPortrait: Bool?
     var isDaemonMode = false // Deprecated: keeping variable for ABI compatibility but unused
     /// Set to true only when the user explicitly triggers Quit (Menu Bar, ⌘Q, or Settings Power/Restart button).
     /// Prevents external window managers (e.g. Vorssaint "Quit on Close") from killing SideKick when closing Settings.
@@ -318,8 +320,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             .sink { [weak self] rotation, flipHorizontal, flipVertical in
                 // A profile switch sends the config itself, once the codec is known.
                 guard let self = self, self.settings.isRunning, !self.isSwitchingProfile else { return }
-                print("🔄 Display transform changed: \(rotation)°, h=\(flipHorizontal), v=\(flipVertical)")
-                self.streamingServer?.updateDisplayTransform(rotation: rotation, flipHorizontal: flipHorizontal, flipVertical: flipVertical)
+                let isPortrait = (rotation == 90 || rotation == 270)
+                if self.settings.displayCreated, let prevPortrait = self.lastAppliedPortrait, prevPortrait != isPortrait {
+                    print("🔄 Display orientation aspect changed (\(rotation)°) — rebuilding virtual display in-place")
+                    self.restartRunningServer(reason: "Rotation changed to \(rotation)°")
+                } else {
+                    print("🔄 Display transform changed: \(rotation)°, h=\(flipHorizontal), v=\(flipVertical)")
+                    self.streamingServer?.updateDisplayTransform(rotation: rotation, flipHorizontal: flipHorizontal, flipVertical: flipVertical)
+                }
             }
             .store(in: &cancellables)
 
@@ -956,6 +964,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 KeyboardInjector.injectBackspace(count: count)
             }
 
+            streamingServer?.onSystemAction = { actionId in
+                KeyboardInjector.triggerSystemAction(actionId)
+            }
+
             streamingServer?.onStats = { [weak self] fps, mbps in
                 let captured = self
                 Task { @MainActor in
@@ -1034,6 +1046,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
         lastAppliedRefreshRate = settings.effectiveRefreshRate
+        lastAppliedPortrait = (settings.rotation == 90 || settings.rotation == 270)
         try await capture.setupForVirtualDisplay(displayID, refreshRate: settings.effectiveRefreshRate)
         return capture
     }
@@ -1107,6 +1120,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if needsRebuild {
             debugLog("Creating/rebuilding virtual display on client connect (\(settings.resolution) @ \(settings.effectiveRefreshRate)Hz)")
             lastAppliedRefreshRate = settings.effectiveRefreshRate
+        lastAppliedPortrait = (settings.rotation == 90 || settings.rotation == 270)
             do {
                 try await rebuildDisplay(for: server)
             } catch {

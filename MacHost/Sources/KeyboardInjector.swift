@@ -173,4 +173,51 @@ enum KeyboardInjector {
         default: return nil
         }
     }
+
+    enum MacSystemAction: UInt8 {
+        case apps = 0
+        case missionControl = 1
+        case showDesktop = 2
+    }
+
+    private typealias CoreDockSendNotificationFn = @convention(c) (CFString, UnsafeMutableRawPointer?) -> Void
+
+    private static let coreDockSendNotification: CoreDockSendNotificationFn? = {
+        guard let handle = dlopen("/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices", RTLD_LAZY),
+              let sym = dlsym(handle, "CoreDockSendNotification") else {
+            return nil
+        }
+        return unsafeBitCast(sym, to: CoreDockSendNotificationFn.self)
+    }()
+
+    /// Triggers a macOS system action (Apps/Launchpad, Mission Control, or Show Desktop).
+    static func triggerSystemAction(_ rawAction: UInt8) {
+        guard let action = MacSystemAction(rawValue: rawAction) else { return }
+        switch action {
+        case .apps:
+            let candidates = [
+                "/System/Applications/Apps.app",
+                "/System/Applications/Launchpad.app",
+            ]
+            for path in candidates where FileManager.default.fileExists(atPath: path) {
+                NSWorkspace.shared.open(URL(fileURLWithPath: path))
+                return
+            }
+        case .missionControl:
+            let path = "/System/Applications/Mission Control.app"
+            if FileManager.default.fileExists(atPath: path) {
+                NSWorkspace.shared.open(URL(fileURLWithPath: path))
+            } else if let send = coreDockSendNotification {
+                send("com.apple.expose.awake" as CFString, nil)
+            }
+        case .showDesktop:
+            if let send = coreDockSendNotification {
+                send("com.apple.showdesktop.awake" as CFString, nil)
+            } else {
+                let key = CGKeyCode(kVK_F11)
+                CGEvent(keyboardEventSource: nil, virtualKey: key, keyDown: true)?.post(tap: .cghidEventTap)
+                CGEvent(keyboardEventSource: nil, virtualKey: key, keyDown: false)?.post(tap: .cghidEventTap)
+            }
+        }
+    }
 }

@@ -11,12 +11,6 @@ echo "Building version $VERSION..."
 
 cd "$ROOT_DIR/MacHost"
 
-# Kill running instance
-echo "Stopping running SideKick..."
-pkill -f SideKick 2>/dev/null || true
-pkill -f SideScreen 2>/dev/null || true
-sleep 0.5
-
 # Clean old build only when --clean is requested
 if [ "${1:-}" = "--clean" ]; then
     echo "Cleaning old build..."

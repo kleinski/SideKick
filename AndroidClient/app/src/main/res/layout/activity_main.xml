@@ -41,6 +41,7 @@
         android:paddingVertical="10dp"
         android:gravity="center_vertical"
         android:visibility="gone"
+        app:layout_constrainedWidth="true"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
@@ -168,12 +169,99 @@
             android:layout_marginHorizontal="14dp"
             android:background="#26FFFFFF" />
 
-        <!-- Right: Direct Action Buttons -->
+        <!-- Right: Direct Action Buttons (scrollable on narrow screens) -->
+        <HorizontalScrollView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:scrollbars="none"
+            android:overScrollMode="never">
+
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical">
+
+            <!-- 0a. Mac Apps -->
+            <LinearLayout
+                android:id="@+id/actionAppsButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:layout_marginEnd="8dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <ImageView
+                    android:layout_width="34dp"
+                    android:layout_height="34dp"
+                    android:padding="7dp"
+                    android:background="@drawable/overlay_action_bg"
+                    android:src="@drawable/ic_apps" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="Apps"
+                    android:textColor="#CCFFFFFF"
+                    android:textSize="9sp" />
+            </LinearLayout>
+
+            <!-- 0b. Mission Control -->
+            <LinearLayout
+                android:id="@+id/actionMissionControlButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:layout_marginEnd="8dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <ImageView
+                    android:layout_width="34dp"
+                    android:layout_height="34dp"
+                    android:padding="7dp"
+                    android:background="@drawable/overlay_action_bg"
+                    android:src="@drawable/ic_mission_control" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="Mission"
+                    android:textColor="#CCFFFFFF"
+                    android:textSize="9sp" />
+            </LinearLayout>
+
+            <!-- 0c. Show Desktop -->
+            <LinearLayout
+                android:id="@+id/actionDesktopButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:layout_marginEnd="8dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <ImageView
+                    android:layout_width="34dp"
+                    android:layout_height="34dp"
+                    android:padding="7dp"
+                    android:background="@drawable/overlay_action_bg"
+                    android:src="@drawable/ic_show_desktop" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="Desktop"
+                    android:textColor="#CCFFFFFF"
+                    android:textSize="9sp" />
+            </LinearLayout>
 
             <!-- 1. Keyboard -->
             <LinearLayout
@@ -182,7 +270,7 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:gravity="center"
-                android:layout_marginEnd="10dp"
+                android:layout_marginEnd="8dp"
                 android:clickable="true"
                 android:focusable="true">
 
@@ -209,7 +297,7 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:gravity="center"
-                android:layout_marginEnd="10dp"
+                android:layout_marginEnd="8dp"
                 android:clickable="true"
                 android:focusable="true">
 
@@ -232,6 +320,135 @@
                     android:textColor="#CCFFFFFF"
                     android:textSize="9sp" />
             </LinearLayout>
+
+            <!-- Group Divider: Zoom Controls -->
+            <View
+                android:layout_width="1dp"
+                android:layout_height="28dp"
+                android:layout_marginStart="2dp"
+                android:layout_marginEnd="10dp"
+                android:background="#26FFFFFF" />
+
+            <!-- Zoom Out -->
+            <LinearLayout
+                android:id="@+id/zoomOutButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:layout_marginEnd="6dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <ImageView
+                    android:layout_width="34dp"
+                    android:layout_height="34dp"
+                    android:padding="7dp"
+                    android:background="@drawable/overlay_action_bg"
+                    android:src="@drawable/ic_zoom_out" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="Zoom -"
+                    android:textColor="#CCFFFFFF"
+                    android:textSize="9sp" />
+            </LinearLayout>
+
+            <!-- Zoom 1:1 -->
+            <LinearLayout
+                android:id="@+id/zoomOneToOneButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:layout_marginEnd="6dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:id="@+id/zoomOneToOneBadge"
+                    android:layout_width="34dp"
+                    android:layout_height="34dp"
+                    android:gravity="center"
+                    android:background="@drawable/overlay_action_bg"
+                    android:text="1:1"
+                    android:textColor="#FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/zoomOneToOneLabel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="100%"
+                    android:textColor="#CCFFFFFF"
+                    android:textSize="9sp" />
+            </LinearLayout>
+
+            <!-- Zoom In -->
+            <LinearLayout
+                android:id="@+id/zoomInButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:layout_marginEnd="6dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <ImageView
+                    android:layout_width="34dp"
+                    android:layout_height="34dp"
+                    android:padding="7dp"
+                    android:background="@drawable/overlay_action_bg"
+                    android:src="@drawable/ic_zoom_in" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="Zoom +"
+                    android:textColor="#CCFFFFFF"
+                    android:textSize="9sp" />
+            </LinearLayout>
+
+            <!-- Fit to Screen -->
+            <LinearLayout
+                android:id="@+id/zoomFitButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:layout_marginEnd="8dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <ImageView
+                    android:layout_width="34dp"
+                    android:layout_height="34dp"
+                    android:padding="7dp"
+                    android:background="@drawable/overlay_action_bg"
+                    android:src="@drawable/ic_zoom_fit" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="Fit"
+                    android:textColor="#CCFFFFFF"
+                    android:textSize="9sp" />
+            </LinearLayout>
+
+            <!-- Group Divider: Session Controls -->
+            <View
+                android:layout_width="1dp"
+                android:layout_height="28dp"
+                android:layout_marginStart="2dp"
+                android:layout_marginEnd="10dp"
+                android:background="#26FFFFFF" />
 
             <!-- 2. Switch Mac -->
             <LinearLayout
@@ -341,6 +558,7 @@
                     android:textSize="9sp" />
             </LinearLayout>
         </LinearLayout>
+        </HorizontalScrollView>
     </LinearLayout>
 
     <!-- Subtle top-center notch handle to restore the overlay when hidden -->

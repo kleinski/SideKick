@@ -106,6 +106,11 @@ class MainActivity : AppCompatActivity() {
     private val isStreamingUi get() = isConnected || demoActive
     private var keyboardAllowedOnMac = true
     private var activeStickyModifiers = 0
+    private var zoomScale = 1f
+    private var panX = 0f
+    private var panY = 0f
+    private var isPinchZooming = false
+    private lateinit var scaleGestureDetector: android.view.ScaleGestureDetector
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -468,14 +473,57 @@ class MainActivity : AppCompatActivity() {
             binding.textureView.surfaceTexture?.let { currentTextureSurface = Surface(it) }
         }
 
-        binding.surfaceView.setOnTouchListener { view, event ->
-            if (demoActive) showDemoTouchHint(event) else handleTouch(view, event)
-            true
+        scaleGestureDetector =
+            android.view.ScaleGestureDetector(
+                this,
+                object : android.view.ScaleGestureDetector.SimpleOnScaleGestureListener() {
+                    private var lastFocusX = 0f
+                    private var lastFocusY = 0f
+
+                    override fun onScaleBegin(detector: android.view.ScaleGestureDetector): Boolean {
+                        isPinchZooming = true
+                        lastFocusX = detector.focusX
+                        lastFocusY = detector.focusY
+                        return true
+                    }
+
+                    override fun onScale(detector: android.view.ScaleGestureDetector): Boolean {
+                        val factor = detector.scaleFactor
+                        if (factor.isFinite() && factor > 0f) {
+                            val dx = detector.focusX - lastFocusX
+                            val dy = detector.focusY - lastFocusY
+                            panX += dx
+                            panY += dy
+                            lastFocusX = detector.focusX
+                            lastFocusY = detector.focusY
+                            setZoom(zoomScale * factor, detector.focusX, detector.focusY)
+                        }
+                        return true
+                    }
+
+                    override fun onScaleEnd(detector: android.view.ScaleGestureDetector) {
+                        isPinchZooming = false
+                    }
+                },
+            )
+
+        val touchHandler: (View, MotionEvent) -> Boolean = { view, event ->
+            scaleGestureDetector.onTouchEvent(event)
+            if (isPinchZooming || scaleGestureDetector.isInProgress) {
+                if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) {
+                    isPinchZooming = false
+                }
+                true
+            } else {
+                if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) {
+                    isPinchZooming = false
+                }
+                if (demoActive) showDemoTouchHint(event) else handleTouch(view, event)
+                true
+            }
         }
-        binding.textureView.setOnTouchListener { view, event ->
-            if (demoActive) showDemoTouchHint(event) else handleTouch(view, event)
-            true
-        }
+        binding.surfaceView.setOnTouchListener(touchHandler)
+        binding.textureView.setOnTouchListener(touchHandler)
     }
 
     private fun setupUI() {
@@ -610,6 +658,7 @@ class MainActivity : AppCompatActivity() {
         displayHeight = 0
 
         hideSoftKeyboard()
+        resetZoom()
         binding.overlayRestoreHandle.visibility = View.GONE
         binding.statusBar.visibility = View.GONE
         binding.settingsPanel.visibility = View.VISIBLE
@@ -1005,6 +1054,36 @@ class MainActivity : AppCompatActivity() {
     private fun setupSettingsButton() {
         binding.settingsButton.setOnClickListener {
             showSettingsDialog()
+        }
+
+        binding.actionAppsButton.setOnClickListener {
+            if (isConnected) {
+                streamClient?.sendSystemAction(StreamClient.SYSTEM_ACTION_APPS)
+            }
+        }
+        binding.actionMissionControlButton.setOnClickListener {
+            if (isConnected) {
+                streamClient?.sendSystemAction(StreamClient.SYSTEM_ACTION_MISSION_CONTROL)
+            }
+        }
+        binding.actionDesktopButton.setOnClickListener {
+            if (isConnected) {
+                streamClient?.sendSystemAction(StreamClient.SYSTEM_ACTION_SHOW_DESKTOP)
+            }
+        }
+
+        binding.zoomOutButton.setOnClickListener {
+            val next = if (zoomScale > 1.01f && zoomScale / 1.25f < 1.05f) 1.0f else zoomScale / 1.25f
+            setZoom(next)
+        }
+        binding.zoomOneToOneButton.setOnClickListener {
+            zoomToOneToOne()
+        }
+        binding.zoomInButton.setOnClickListener {
+            setZoom(zoomScale * 1.25f)
+        }
+        binding.zoomFitButton.setOnClickListener {
+            resetZoom()
         }
 
         binding.keyboardButton.setOnClickListener {
@@ -1441,6 +1520,7 @@ class MainActivity : AppCompatActivity() {
                     resetOrientationToSensor()
                     binding.settingsPanel.visibility = View.VISIBLE
                     hideSoftKeyboard()
+        resetZoom()
         binding.overlayRestoreHandle.visibility = View.GONE
                     binding.statusBar.visibility = View.GONE
                     val mode = prefs.connectionMode
@@ -1830,6 +1910,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun clearVideoSurface() {
+        resetZoom()
         setSurfaceAspect(null)
         binding.textureView.visibility = View.GONE
         applyTextureTransform()
@@ -1981,6 +2062,83 @@ class MainActivity : AppCompatActivity() {
             centerY,
         )
         view.setTransform(matrix)
+    }
+
+    private fun setZoom(
+        targetScale: Float,
+        focusX: Float? = null,
+        focusY: Float? = null,
+    ) {
+        val clamped = targetScale.coerceIn(0.5f, 4.0f)
+        val oldScale = zoomScale
+        if (focusX != null && focusY != null && oldScale > 0f) {
+            val w = binding.surfaceView.width.toFloat()
+            val h = binding.surfaceView.height.toFloat()
+            if (w > 0f && h > 0f) {
+                val ratio = clamped / oldScale
+                panX = (panX - (focusX - w / 2f)) * ratio + (focusX - w / 2f)
+                panY = (panY - (focusY - h / 2f)) * ratio + (focusY - h / 2f)
+            }
+        }
+        zoomScale = if (kotlin.math.abs(clamped - 1.0f) < 0.03f) 1.0f else clamped
+        if (zoomScale <= 1.0f) {
+            panX = 0f
+            panY = 0f
+        }
+        applyZoomAndPan()
+    }
+
+    private fun zoomToOneToOne() {
+        val viewW = binding.surfaceView.width.toFloat()
+        val target =
+            if (displayWidth > 0 && viewW > 0f) {
+                (displayWidth.toFloat() / viewW).coerceIn(0.5f, 4.0f)
+            } else {
+                1.0f
+            }
+        panX = 0f
+        panY = 0f
+        setZoom(target)
+    }
+
+    private fun resetZoom() {
+        zoomScale = 1.0f
+        panX = 0f
+        panY = 0f
+        applyZoomAndPan()
+    }
+
+    private fun applyZoomAndPan() {
+        val views = listOf(binding.surfaceView, binding.textureView)
+        val refW = binding.surfaceView.width.toFloat()
+        val refH = binding.surfaceView.height.toFloat()
+        if (refW > 0f && refH > 0f && zoomScale > 1.0f) {
+            val maxPanX = (refW * (zoomScale - 1.0f)) / 2f
+            val maxPanY = (refH * (zoomScale - 1.0f)) / 2f
+            panX = panX.coerceIn(-maxPanX, maxPanX)
+            panY = panY.coerceIn(-maxPanY, maxPanY)
+        } else {
+            panX = 0f
+            panY = 0f
+        }
+        for (v in views) {
+            v.pivotX = v.width / 2f
+            v.pivotY = v.height / 2f
+            v.scaleX = zoomScale
+            v.scaleY = zoomScale
+            v.translationX = panX
+            v.translationY = panY
+        }
+        updateZoomButtonsUi()
+    }
+
+    private fun updateZoomButtonsUi() {
+        val pct = kotlin.math.round(zoomScale * 100f).toInt()
+        binding.zoomOneToOneLabel.text = "$pct%"
+        val isCustomZoom = kotlin.math.abs(zoomScale - 1.0f) >= 0.03f
+        binding.zoomOneToOneBadge.setTextColor(
+            if (isCustomZoom) Color.parseColor("#60A5FA") else Color.WHITE,
+        )
     }
 
     /**

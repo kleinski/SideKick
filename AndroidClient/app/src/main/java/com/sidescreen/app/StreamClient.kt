@@ -713,6 +713,27 @@ class StreamClient(
         }
     }
 
+    fun sendSystemAction(actionId: Int) {
+        if (!isConnected) return
+        touchScope.launch {
+            try {
+                val packet =
+                    byteArrayOf(
+                        MESSAGE_KEYBOARD_EVENT.toByte(),
+                        3.toByte(), // subType 3: SystemAction
+                        (actionId and 0xFF).toByte(),
+                    )
+                synchronized(outputLock) {
+                    outputStream?.let { out ->
+                        out.write(packet)
+                        out.flush()
+                    }
+                }
+            } catch (_: Exception) {
+            }
+        }
+    }
+
     fun sendKeyboardText(text: String) {
         if (!isConnected || text.isEmpty()) return
         val bytes = text.toByteArray(Charsets.UTF_8)
@@ -967,6 +988,10 @@ class StreamClient(
         private const val MESSAGE_KEYBOARD_PERMISSION = 20
         private const val FRAME_FLAG_KEYFRAME = 1
         private const val KEYFRAME_REQUEST_FLAG_FORCE = 1
+
+        const val SYSTEM_ACTION_APPS = 0
+        const val SYSTEM_ACTION_MISSION_CONTROL = 1
+        const val SYSTEM_ACTION_SHOW_DESKTOP = 2
 
         /**
          * Codec-aware sync-frame (keyframe) detection on the legacy

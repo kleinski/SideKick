@@ -17,6 +17,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+<a id="1.2.13"></a>
+## [1.2.13] - 2026-11-23 — Live Rotation Rebuild, Mac Action Buttons & Android Zoom/Pan
+
+### Added
+- **Mac System Action Buttons on Android:** Added **Apps**, **Mission Control**, and **Desktop** buttons directly in the top control overlay (`WireMessage.keyboardEvent` subType `3` -> `KeyboardInjector.triggerSystemAction`).
+- **Android Zoom & Pan Controls:** Added **Zoom -**, **1:1**, **Zoom +**, and **Fit** buttons in the top overlay (plus pinch-to-zoom & pan via `ScaleGestureDetector`) with live zoom percentage badge and automatic touch-coordinate mapping.
+- **Scrollable Action Row in Top Overlay:** Wrapped the overlay action buttons in a `HorizontalScrollView` so all controls remain accessible even on narrower screens or in portrait orientation.
+
+### Fixed
+- **Live Display Rebuild on Portrait/Landscape Rotation Change (`AppDelegate.swift`):** Switching between Landscape (`0°`/`180°`) and Portrait (`90°`/`270°`) now immediately rebuilds the virtual display and encoder in-place with swapped width/height instead of requiring a manual disconnect/reconnect.
+- **Non-Disruptive macOS Build Script (`scripts/build_mac.sh`):** Removed `pkill` from `build_mac.sh` so building releases no longer terminates a running `/Applications/SideKick.app` session.
+
+---
+
 <a id="1.2.12"></a>
 ## [1.2.12] - 2026-11-22 — Android Special Keys Strip & Menu Bar Rotation Picker
 

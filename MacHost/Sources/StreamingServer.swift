@@ -194,6 +194,7 @@ class StreamingServer {
     var onKeyboardEvent: ((Int, Bool, UInt8) -> Void)?
     var onKeyboardText: ((String) -> Void)?
     var onKeyboardBackspace: ((Int) -> Void)?
+    var onSystemAction: ((UInt8) -> Void)?
     var onStats: ((Double, Double) -> Void)?
     var onKeyframeRequested: ((Bool) -> Void)?
     // Whether host wants to receive touch events from client. Ping/pong is
@@ -1161,6 +1162,13 @@ class StreamingServer {
                     let count = Int(msg.withUnsafeBytes { $0.loadUnaligned(fromByteOffset: 2, as: UInt16.self) })
                     DispatchQueue.main.async {
                         self.onKeyboardBackspace?(count)
+                    }
+                case 3: // SystemAction (3 bytes): [keyboardEvent, 3, actionId]
+                    guard inputBuffer.count >= 3 else { return }
+                    let actionId = inputByte(at: 2)
+                    consumeInputBytes(3)
+                    DispatchQueue.main.async {
+                        self.onSystemAction?(actionId)
                     }
                 default:
                     debugLog("Unknown keyboard subType: \(subType)")
