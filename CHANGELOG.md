@@ -17,6 +17,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+<a id="1.2.14"></a>
+## [1.2.14] - 2026-11-26 — Lock Android Tablet Sensor Rotation
+
+### Changed
+- **Disable Automatic Tablet Sensor Rotation on Android:**
+  - Locked `MainActivity` to `android:screenOrientation="landscape"` and `android:resizeableActivity="false"` in `AndroidManifest.xml`, and removed `SCREEN_ORIENTATION_FULL_SENSOR` in `MainActivity.kt` (including on disconnect and `onConfigurationChanged`).
+  - Display orientation is now controlled exclusively by the macOS app's `Rotation` setting (`0°` / `90°` / `180°` / `270°`), preventing accidental sensor rotations from desynchronizing the tablet orientation from the Mac virtual display.
+
+---
+
 <a id="1.2.13"></a>
 ## [1.2.13] - 2026-11-23 — Live Rotation Rebuild, Mac Action Buttons & Android Zoom/Pan
 

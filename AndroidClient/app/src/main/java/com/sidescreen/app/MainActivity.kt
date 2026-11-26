@@ -118,8 +118,8 @@ class MainActivity : AppCompatActivity() {
         DiagLog.init(applicationContext)
         prefs = PreferencesManager(this)
 
-        // Allow rotation based on device sensor when not connected
-        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR
+        // Lock orientation to landscape by default; only the Mac app's rotation setting changes it
+        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
 
         // Keep screen on
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -2142,10 +2142,20 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * Reset orientation to follow device sensor (when disconnected)
+     * Keep orientation locked to landscape when disconnected so tablet sensor rotation
+     * never desynchronizes the display from the Mac host.
      */
     private fun resetOrientationToSensor() {
-        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR
+        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+    }
+
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        if (isStreamingUi) {
+            applyRotation(displayRotation, displayFlipHorizontal, displayFlipVertical)
+        } else {
+            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        }
     }
 
     private fun log(message: String) {
