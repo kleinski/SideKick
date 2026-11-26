@@ -17,6 +17,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+<a id="1.2.15"></a>
+## [1.2.15] - 2026-11-26 — Fix Android 16 Tablet Orientation Lock Opt-Out
+
+### Fixed
+- **Honor `screenOrientation` Lock on Android 16 (API 36) Tablets (`AndroidManifest.xml`):**
+  - Added `<property android:name="android.window.PROPERTY_COMPAT_ALLOW_RESTRICTED_RESIZABILITY" android:value="true" />` to `<application>` and `MainActivity`, so Android 16 (`targetSdk = 36`) no longer ignores the orientation lock on large-screen tablets (`sw >= 600dp`).
+
+---
+
 <a id="1.2.14"></a>
 ## [1.2.14] - 2026-11-26 — Lock Android Tablet Sensor Rotation
 
