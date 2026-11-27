@@ -49,6 +49,41 @@ class PreferencesManager(
         get() = prefs.getBoolean("auto_connect_enabled", true)
         set(value) = prefs.edit().putBoolean("auto_connect_enabled", value).apply()
 
+    // Overlay restore trigger mode: "notch" (top-center handle) or "button" (draggable SideKick floating icon)
+    var overlayTriggerMode: String
+        get() = prefs.getString("overlay_trigger_mode", TRIGGER_NOTCH) ?: TRIGGER_NOTCH
+        set(value) = prefs.edit().putString("overlay_trigger_mode", value).apply()
+
+    var overlayPillXFraction: Float
+        get() = prefs.getFloat("overlay_pill_x_frac", -1f)
+        set(value) = prefs.edit().putFloat("overlay_pill_x_frac", value).apply()
+
+    var overlayPillYFraction: Float
+        get() = prefs.getFloat("overlay_pill_y_frac", -1f)
+        set(value) = prefs.edit().putFloat("overlay_pill_y_frac", value).apply()
+
+    var floatingTriggerXFraction: Float
+        get() = prefs.getFloat("floating_trigger_x_frac", -1f)
+        set(value) = prefs.edit().putFloat("floating_trigger_x_frac", value).apply()
+
+    var floatingTriggerYFraction: Float
+        get() = prefs.getFloat("floating_trigger_y_frac", -1f)
+        set(value) = prefs.edit().putFloat("floating_trigger_y_frac", value).apply()
+
+    fun resetOverlayPositions() {
+        prefs.edit()
+            .putFloat("overlay_pill_x_frac", -1f)
+            .putFloat("overlay_pill_y_frac", -1f)
+            .putFloat("floating_trigger_x_frac", -1f)
+            .putFloat("floating_trigger_y_frac", -1f)
+            .apply()
+    }
+
+    companion object {
+        const val TRIGGER_NOTCH = "notch"
+        const val TRIGGER_BUTTON = "button"
+    }
+
     /**
      * Stable identity sent to the Mac (wire type 18) so the host can bring back this tablet's
      * settings every time. Random, generated once; survives reconnects and

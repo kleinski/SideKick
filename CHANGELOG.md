@@ -17,6 +17,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+<a id="1.2.16"></a>
+## [1.2.16] - 2026-11-27 — Stream Heartbeat Watchdog, Dynamic Wake Lock & Concept D Mini-Pill Overlay
+
+### Added
+- **Redesigned Concept D Mini-Status-Pill Overlay on Android:**
+  - Replaced the wide multi-row toolbar with an ultra-slim, single-row, **draggable** frosted-glass pill (`MacBook Pro · 60 FPS · 🔒` + compact triggers: `Mac ▾`, `Keyboard`, `⌘`, `100% ▾`, `⋯`, and direct `Disconnect`).
+  - Added floating popovers anchored dynamically to the pill for **Mac Actions** (`Apps`, `Mission Control`, `Desktop`), **Zoom** (`-`, `1:1`, `+`, `Fit`), **Special Keys** (`⌘`), and **More** (`Switch Mac`, `Settings`, `Hide Overlay`).
+- **Selectable Overlay Trigger & Persistent Positions:**
+  - Added an **Overlay Trigger** option in *Overlay & Display Settings* to choose between **Top Notch** and a draggable **SideKick Button** (App icon).
+  - SideKick now persists the last dragged positions of both the Mini-Status-Pill and the SideKick Floating Button across sessions (with a one-tap **Reset Positions** button in Settings).
+
+### Fixed
+- **Client-Side Stream Heartbeat Watchdog (`StreamClient.kt`):** Added a 5-second socket read timeout (`STREAM_READ_TIMEOUT_MS`) and ping write error disconnect so the Android app cleanly returns to the Home Screen instead of hanging when the MacBook powers off or sleeps unexpectedly.
+- **Dynamic Screen Wake Lock (`MainActivity.kt`):** `FLAG_KEEP_SCREEN_ON` is now enabled only while actively streaming (or in Demo mode) and cleared on the Home Screen / after disconnect so the tablet screen can sleep normally when idle.
+
+---
+
 <a id="1.2.15"></a>
 ## [1.2.15] - 2026-11-26 — Fix Android 16 Tablet Orientation Lock Opt-Out
 

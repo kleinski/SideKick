@@ -121,8 +121,8 @@ class MainActivity : AppCompatActivity() {
         // Lock orientation to landscape by default; only the Mac app's rotation setting changes it
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
 
-        // Keep screen on
-        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        // Screen wake lock is managed dynamically in updateKeepScreenOn() only while streaming
+        updateKeepScreenOn()
 
         // Enable edge-to-edge display (draw behind system bars and cutout)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -617,6 +617,7 @@ class MainActivity : AppCompatActivity() {
         displayFlipVertical = false
 
         binding.settingsPanel.visibility = View.GONE
+        updateKeepScreenOn()
         applySettingsButtonVisibility()
         restoreSettingsButtonPosition()
         enableFullscreenMode()
@@ -659,7 +660,10 @@ class MainActivity : AppCompatActivity() {
 
         hideSoftKeyboard()
         resetZoom()
+        closeAllPopovers()
+        updateKeepScreenOn()
         binding.overlayRestoreHandle.visibility = View.GONE
+        binding.floatingTriggerButton.visibility = View.GONE
         binding.statusBar.visibility = View.GONE
         binding.settingsPanel.visibility = View.VISIBLE
         setSurfaceAspect(null)
@@ -816,6 +820,9 @@ class MainActivity : AppCompatActivity() {
         val view = dialog.findViewById<View>(android.R.id.content)
         val showStatsSwitch = view.findViewById<SwitchMaterial>(R.id.showStatsSwitch)
         val hideSettingsSwitch = view.findViewById<SwitchMaterial>(R.id.hideSettingsSwitch)
+        val triggerNotchOption = view.findViewById<TextView>(R.id.triggerNotchOption)
+        val triggerButtonOption = view.findViewById<TextView>(R.id.triggerButtonOption)
+        val resetOverlayPositionsBtn = view.findViewById<View>(R.id.resetOverlayPositionsBtn)
         val dialogAutoConnectSwitch = view.findViewById<SwitchMaterial>(R.id.dialogAutoConnectSwitch)
         val settingsVersionText = view.findViewById<TextView>(R.id.settingsVersionText)
         val opacitySlider = view.findViewById<Slider>(R.id.opacitySlider)
@@ -878,12 +885,42 @@ class MainActivity : AppCompatActivity() {
                 applySettingsButtonVisibility()
             }
             if (isChecked) {
-                Toast.makeText(
-                    this,
-                    "Top overlay hidden — tap top handle or use Back to reveal",
-                    Toast.LENGTH_LONG,
-                ).show()
+                val hint =
+                    if (prefs.overlayTriggerMode == PreferencesManager.TRIGGER_BUTTON) {
+                        "Overlay hidden — tap the SideKick button or Back to reveal"
+                    } else {
+                        "Top overlay hidden — tap top handle or use Back to reveal"
+                    }
+                Toast.makeText(this, hint, Toast.LENGTH_LONG).show()
             }
+        }
+
+        fun updateTriggerToggleUi() {
+            val isButton = prefs.overlayTriggerMode == PreferencesManager.TRIGGER_BUTTON
+            triggerNotchOption?.setBackgroundColor(if (!isButton) Color.parseColor("#2563EB") else Color.TRANSPARENT)
+            triggerNotchOption?.setTextColor(if (!isButton) Color.WHITE else Color.parseColor("#94A3B8"))
+            triggerButtonOption?.setBackgroundColor(if (isButton) Color.parseColor("#2563EB") else Color.TRANSPARENT)
+            triggerButtonOption?.setTextColor(if (isButton) Color.WHITE else Color.parseColor("#94A3B8"))
+        }
+        updateTriggerToggleUi()
+
+        triggerNotchOption?.setOnClickListener {
+            prefs.overlayTriggerMode = PreferencesManager.TRIGGER_NOTCH
+            updateTriggerToggleUi()
+            if (isStreamingUi) applySettingsButtonVisibility()
+        }
+        triggerButtonOption?.setOnClickListener {
+            prefs.overlayTriggerMode = PreferencesManager.TRIGGER_BUTTON
+            updateTriggerToggleUi()
+            if (isStreamingUi) {
+                applySettingsButtonVisibility()
+                restoreSettingsButtonPosition()
+            }
+        }
+        resetOverlayPositionsBtn?.setOnClickListener {
+            prefs.resetOverlayPositions()
+            restoreSettingsButtonPosition()
+            Toast.makeText(this, "Overlay positions reset", Toast.LENGTH_SHORT).show()
         }
 
         opacitySlider.addOnChangeListener { _, value, _ ->
@@ -914,6 +951,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateSettingsButtonOpacity(opacity: Float) {
         binding.statusBar.alpha = opacity
+        binding.floatingTriggerButton.alpha = opacity
     }
 
     private fun updateKeyboardButtonState() {
@@ -930,9 +968,68 @@ class MainActivity : AppCompatActivity() {
 
     private fun toggleSpecialKeysPanel() {
         if (!keyboardAllowedOnMac) return
-        val show = binding.specialKeysPanel.visibility != View.VISIBLE
-        binding.specialKeysPanel.visibility = if (show) View.VISIBLE else View.GONE
+        togglePopover(binding.specialKeysPanel, binding.specialKeysButton)
         updateSpecialKeysBadge()
+    }
+
+    private fun closeAllPopovers() {
+        binding.macActionsPopover.visibility = View.GONE
+        binding.zoomPopover.visibility = View.GONE
+        binding.moreMenuPopover.visibility = View.GONE
+        binding.specialKeysPanel.visibility = View.GONE
+        binding.macActionsLabel.setTextColor(Color.WHITE)
+        updateSpecialKeysBadge()
+    }
+
+    private fun togglePopover(
+        popover: View,
+        anchor: View,
+    ) {
+        val willShow = popover.visibility != View.VISIBLE
+        closeAllPopovers()
+        if (willShow) {
+            popover.visibility = View.VISIBLE
+            if (popover === binding.macActionsPopover) {
+                binding.macActionsLabel.setTextColor(Color.parseColor("#60A5FA"))
+            }
+            popover.post { positionPopoverBelowAnchor(popover, anchor) }
+        }
+    }
+
+    private fun positionPopoverBelowAnchor(
+        popover: View,
+        anchor: View,
+    ) {
+        val root = binding.root
+        if (root.width == 0 || root.height == 0) return
+        val rootLoc = IntArray(2)
+        val anchorLoc = IntArray(2)
+        root.getLocationOnScreen(rootLoc)
+        anchor.getLocationOnScreen(anchorLoc)
+
+        val anchorCenterX = (anchorLoc[0] - rootLoc[0]) + anchor.width / 2f
+        val anchorTop = (anchorLoc[1] - rootLoc[1]).toFloat()
+        val anchorBottom = anchorTop + anchor.height
+        val gap = (8 * resources.displayMetrics.density)
+        val margin = (8 * resources.displayMetrics.density)
+
+        val popW = popover.width.toFloat().coerceAtLeast(1f)
+        val popH = popover.height.toFloat().coerceAtLeast(1f)
+
+        val maxX = (root.width - popW - margin).coerceAtLeast(margin)
+        val targetX = (anchorCenterX - popW / 2f).coerceIn(margin, maxX)
+
+        val belowY = anchorBottom + gap
+        val aboveY = anchorTop - gap - popH
+        val targetY =
+            if (belowY + popH + margin <= root.height) {
+                belowY
+            } else {
+                aboveY.coerceIn(margin, (root.height - popH - margin).coerceAtLeast(margin))
+            }
+
+        popover.translationX = targetX
+        popover.translationY = targetY
     }
 
     private fun toggleStickyModifier(mask: Int) {
@@ -1053,24 +1150,83 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupSettingsButton() {
         binding.settingsButton.setOnClickListener {
+            closeAllPopovers()
             showSettingsDialog()
         }
 
+        binding.macActionsButton.setOnClickListener {
+            togglePopover(binding.macActionsPopover, binding.macActionsButton)
+        }
+        binding.zoomMenuButton.setOnClickListener {
+            togglePopover(binding.zoomPopover, binding.zoomMenuButton)
+        }
+        binding.moreMenuButton.setOnClickListener {
+            togglePopover(binding.moreMenuPopover, binding.moreMenuButton)
+        }
+
         binding.actionAppsButton.setOnClickListener {
+            closeAllPopovers()
             if (isConnected) {
                 streamClient?.sendSystemAction(StreamClient.SYSTEM_ACTION_APPS)
             }
         }
         binding.actionMissionControlButton.setOnClickListener {
+            closeAllPopovers()
             if (isConnected) {
                 streamClient?.sendSystemAction(StreamClient.SYSTEM_ACTION_MISSION_CONTROL)
             }
         }
         binding.actionDesktopButton.setOnClickListener {
+            closeAllPopovers()
             if (isConnected) {
                 streamClient?.sendSystemAction(StreamClient.SYSTEM_ACTION_SHOW_DESKTOP)
             }
         }
+
+        // Draggable Mini-Status-Pill (drag via handle or status area, persists position)
+        setupDraggableView(
+            dragHandle = binding.overlayDragHandle,
+            targetView = binding.statusBar,
+            onDragStarted = { closeAllPopovers() },
+            onPositionCommitted = { xFrac, yFrac ->
+                prefs.overlayPillXFraction = xFrac
+                prefs.overlayPillYFraction = yFrac
+            },
+        )
+        setupDraggableView(
+            dragHandle = binding.telemetryContainer,
+            targetView = binding.statusBar,
+            onDragStarted = { closeAllPopovers() },
+            onPositionCommitted = { xFrac, yFrac ->
+                prefs.overlayPillXFraction = xFrac
+                prefs.overlayPillYFraction = yFrac
+            },
+        )
+
+        // Draggable Floating SideKick Trigger Button (tap toggles overlay, drag moves & saves)
+        setupDraggableView(
+            dragHandle = binding.floatingTriggerButton,
+            targetView = binding.floatingTriggerButton,
+            onTap = {
+                if (binding.statusBar.visibility == View.VISIBLE) {
+                    binding.statusBar.visibility = View.GONE
+                    closeAllPopovers()
+                    revealHandler.removeCallbacks(hideSettingsButtonRunnable)
+                    updateRestoreTriggerVisibility(overlayVisible = false)
+                } else {
+                    if (prefs.hideSettingsButton) {
+                        revealSettingsButtonTemporarily()
+                    } else {
+                        binding.statusBar.visibility = View.VISIBLE
+                        updateRestoreTriggerVisibility(overlayVisible = true)
+                    }
+                }
+            },
+            onPositionCommitted = { xFrac, yFrac ->
+                prefs.floatingTriggerXFraction = xFrac
+                prefs.floatingTriggerYFraction = yFrac
+            },
+        )
 
         binding.zoomOutButton.setOnClickListener {
             val next = if (zoomScale > 1.01f && zoomScale / 1.25f < 1.05f) 1.0f else zoomScale / 1.25f
@@ -1124,13 +1280,14 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding.switchMacButton.setOnClickListener {
+            closeAllPopovers()
             showSwitchMacMenu()
         }
 
         binding.hideOverlayButton.setOnClickListener {
             binding.statusBar.visibility = View.GONE
-            binding.specialKeysPanel.visibility = View.GONE
-            binding.overlayRestoreHandle.visibility = View.VISIBLE
+            closeAllPopovers()
+            updateRestoreTriggerVisibility(overlayVisible = false)
             revealHandler.removeCallbacks(hideSettingsButtonRunnable)
         }
 
@@ -1139,7 +1296,7 @@ class MainActivity : AppCompatActivity() {
                 revealSettingsButtonTemporarily()
             } else {
                 binding.statusBar.visibility = View.VISIBLE
-                binding.overlayRestoreHandle.visibility = View.GONE
+                updateRestoreTriggerVisibility(overlayVisible = true)
             }
         }
 
@@ -1196,14 +1353,31 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    /** Streaming-time visibility of the unified top overlay, honoring the hide preference. */
+    /** Streaming-time visibility of the unified top overlay, honoring the hide & trigger preferences. */
     private fun applySettingsButtonVisibility() {
         val showBar = isStreamingUi && !prefs.hideSettingsButton
         binding.statusBar.visibility = if (showBar) View.VISIBLE else View.GONE
-        binding.overlayRestoreHandle.visibility = if (isStreamingUi && !showBar) View.VISIBLE else View.GONE
+        if (!showBar) closeAllPopovers()
+        updateRestoreTriggerVisibility(overlayVisible = showBar)
         binding.switchMacButton.visibility =
             if (isConnected && !demoActive && pairedHostStorage.loadAll().size > 1) View.VISIBLE else View.GONE
         updateKeyboardButtonState()
+    }
+
+    private fun updateRestoreTriggerVisibility(overlayVisible: Boolean) {
+        if (!isStreamingUi) {
+            binding.overlayRestoreHandle.visibility = View.GONE
+            binding.floatingTriggerButton.visibility = View.GONE
+            return
+        }
+        val useButton = prefs.overlayTriggerMode == PreferencesManager.TRIGGER_BUTTON
+        if (useButton) {
+            binding.overlayRestoreHandle.visibility = View.GONE
+            binding.floatingTriggerButton.visibility = View.VISIBLE
+        } else {
+            binding.floatingTriggerButton.visibility = View.GONE
+            binding.overlayRestoreHandle.visibility = if (!overlayVisible) View.VISIBLE else View.GONE
+        }
     }
 
     private val revealHandler = Handler(Looper.getMainLooper())
@@ -1211,27 +1385,113 @@ class MainActivity : AppCompatActivity() {
         Runnable {
             if (isStreamingUi && prefs.hideSettingsButton) {
                 binding.statusBar.visibility = View.GONE
-                binding.specialKeysPanel.visibility = View.GONE
-                binding.overlayRestoreHandle.visibility = View.VISIBLE
+                closeAllPopovers()
+                updateRestoreTriggerVisibility(overlayVisible = false)
             }
         }
 
     private fun revealSettingsButtonTemporarily() {
         binding.statusBar.visibility = View.VISIBLE
-        binding.overlayRestoreHandle.visibility = View.GONE
+        updateRestoreTriggerVisibility(overlayVisible = true)
         revealHandler.removeCallbacks(hideSettingsButtonRunnable)
         revealHandler.postDelayed(hideSettingsButtonRunnable, 5_000L)
     }
 
-    private fun restoreSettingsButtonPosition() {
-        updateSettingsButtonPosition(prefs.settingsButtonCorner)
+    @SuppressLint("ClickableViewAccessibility")
+    private fun setupDraggableView(
+        dragHandle: View,
+        targetView: View,
+        onDragStarted: (() -> Unit)? = null,
+        onTap: (() -> Unit)? = null,
+        onPositionCommitted: (Float, Float) -> Unit,
+    ) {
+        var downRawX = 0f
+        var downRawY = 0f
+        var startTransX = 0f
+        var startTransY = 0f
+        var isDragging = false
+        val touchSlop = (10 * resources.displayMetrics.density)
+
+        dragHandle.setOnTouchListener { _, event ->
+            val root = binding.root
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    downRawX = event.rawX
+                    downRawY = event.rawY
+                    startTransX = targetView.translationX
+                    startTransY = targetView.translationY
+                    isDragging = false
+                    true
+                }
+
+                MotionEvent.ACTION_MOVE -> {
+                    val dx = event.rawX - downRawX
+                    val dy = event.rawY - downRawY
+                    if (!isDragging && (kotlin.math.abs(dx) > touchSlop || kotlin.math.abs(dy) > touchSlop)) {
+                        isDragging = true
+                        onDragStarted?.invoke()
+                    }
+                    if (isDragging && root.width > 0 && root.height > 0) {
+                        val margin = (8 * resources.displayMetrics.density)
+                        val minTransX = margin - targetView.left
+                        val maxTransX = (root.width - targetView.width - margin) - targetView.left
+                        val minTransY = margin - targetView.top
+                        val maxTransY = (root.height - targetView.height - margin) - targetView.top
+                        targetView.translationX =
+                            (startTransX + dx).coerceIn(minOf(minTransX, maxTransX), maxOf(minTransX, maxTransX))
+                        targetView.translationY =
+                            (startTransY + dy).coerceIn(minOf(minTransY, maxTransY), maxOf(minTransY, maxTransY))
+                    }
+                    true
+                }
+
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    if (isDragging && root.width > targetView.width && root.height > targetView.height) {
+                        val availW = (root.width - targetView.width).toFloat().coerceAtLeast(1f)
+                        val availH = (root.height - targetView.height).toFloat().coerceAtLeast(1f)
+                        val absX = (targetView.left + targetView.translationX).coerceIn(0f, availW)
+                        val absY = (targetView.top + targetView.translationY).coerceIn(0f, availH)
+                        onPositionCommitted(absX / availW, absY / availH)
+                    } else if (!isDragging && event.actionMasked == MotionEvent.ACTION_UP) {
+                        onTap?.invoke()
+                    }
+                    isDragging = false
+                    true
+                }
+
+                else -> false
+            }
+        }
     }
 
-    private fun updateSettingsButtonPosition(
-        @Suppress("UNUSED_PARAMETER") position: Int,
+    private fun restoreSettingsButtonPosition() {
+        binding.root.post {
+            applySavedPosition(binding.statusBar, prefs.overlayPillXFraction, prefs.overlayPillYFraction)
+            applySavedPosition(
+                binding.floatingTriggerButton,
+                prefs.floatingTriggerXFraction,
+                prefs.floatingTriggerYFraction,
+            )
+        }
+    }
+
+    private fun applySavedPosition(
+        view: View,
+        xFrac: Float,
+        yFrac: Float,
     ) {
-        binding.statusBar.translationX = 0f
-        binding.statusBar.translationY = 0f
+        val root = binding.root
+        if (xFrac < 0f || yFrac < 0f || root.width <= 0 || root.height <= 0 || view.width <= 0 || view.height <= 0) {
+            view.translationX = 0f
+            view.translationY = 0f
+            return
+        }
+        val availW = (root.width - view.width).toFloat().coerceAtLeast(1f)
+        val availH = (root.height - view.height).toFloat().coerceAtLeast(1f)
+        val targetX = xFrac.coerceIn(0f, 1f) * availW
+        val targetY = yFrac.coerceIn(0f, 1f) * availH
+        view.translationX = targetX - view.left
+        view.translationY = targetY - view.top
     }
 
     /**
@@ -1486,6 +1746,7 @@ class MainActivity : AppCompatActivity() {
                     stopChecklistUpdates()
                     enableFullscreenMode()
                     binding.settingsPanel.visibility = View.GONE
+                    updateKeepScreenOn()
                     applySettingsButtonVisibility()
                     restoreSettingsButtonPosition()
                     updateOverlayVisibility(prefs.showStatsOverlay)
@@ -1520,8 +1781,11 @@ class MainActivity : AppCompatActivity() {
                     resetOrientationToSensor()
                     binding.settingsPanel.visibility = View.VISIBLE
                     hideSoftKeyboard()
-        resetZoom()
-        binding.overlayRestoreHandle.visibility = View.GONE
+                    resetZoom()
+                    closeAllPopovers()
+                    updateKeepScreenOn()
+                    binding.overlayRestoreHandle.visibility = View.GONE
+                    binding.floatingTriggerButton.visibility = View.GONE
                     binding.statusBar.visibility = View.GONE
                     val mode = prefs.connectionMode
                     val willTransition = mode == ConnectionMode.WIRELESS
@@ -1802,6 +2066,7 @@ class MainActivity : AppCompatActivity() {
                             enableFullscreenMode()
 
                             binding.settingsPanel.visibility = View.GONE
+                            updateKeepScreenOn()
                             applySettingsButtonVisibility()
                             restoreSettingsButtonPosition()
                             updateOverlayVisibility(prefs.showStatsOverlay)
@@ -1817,7 +2082,11 @@ class MainActivity : AppCompatActivity() {
 
                             binding.settingsPanel.visibility = View.VISIBLE
                             hideSoftKeyboard()
+                            resetZoom()
+                            closeAllPopovers()
+                            updateKeepScreenOn()
                             binding.overlayRestoreHandle.visibility = View.GONE
+                            binding.floatingTriggerButton.visibility = View.GONE
                             binding.statusBar.visibility = View.GONE
                             clearVideoSurface()
 
@@ -2135,10 +2404,19 @@ class MainActivity : AppCompatActivity() {
     private fun updateZoomButtonsUi() {
         val pct = kotlin.math.round(zoomScale * 100f).toInt()
         binding.zoomOneToOneLabel.text = "$pct%"
+        binding.zoomOneToOneBadge.text = "$pct% ▾"
         val isCustomZoom = kotlin.math.abs(zoomScale - 1.0f) >= 0.03f
         binding.zoomOneToOneBadge.setTextColor(
             if (isCustomZoom) Color.parseColor("#60A5FA") else Color.WHITE,
         )
+    }
+
+    private fun updateKeepScreenOn() {
+        if (isStreamingUi) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        } else {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
     }
 
     /**

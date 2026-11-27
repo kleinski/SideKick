@@ -547,6 +547,10 @@ class StreamClient(
     private suspend fun receiveData() =
         withContext(Dispatchers.IO) {
             val input = inputStream ?: return@withContext
+            try {
+                socket?.soTimeout = STREAM_READ_TIMEOUT_MS
+            } catch (_: Exception) {
+            }
 
             try {
                 while (isConnected) {
@@ -611,6 +615,11 @@ class StreamClient(
                         }
                     }
                 }
+            } catch (e: java.net.SocketTimeoutException) {
+                if (isConnected) {
+                    diagLog("⏱️ Stream heartbeat timeout (${STREAM_READ_TIMEOUT_MS}ms without data/pong) — disconnecting")
+                    Log.w(TAG, "⏱️ Stream heartbeat timeout — Mac unreachable")
+                }
             } catch (e: IOException) {
                 if (isConnected) {
                     Log.e(TAG, "❌ Read error", e)
@@ -650,6 +659,11 @@ class StreamClient(
                         out.flush()
                     }
                 }
+            } catch (e: IOException) {
+                if (isConnected) {
+                    diagLog("⏱️ Ping write failed (${e.message}) — disconnecting")
+                    disconnect()
+                }
             } catch (_: Exception) {
             }
         }
@@ -674,6 +688,11 @@ class StreamClient(
                         out.write(buffer.array())
                         out.flush()
                     }
+                }
+            } catch (e: IOException) {
+                if (isConnected) {
+                    diagLog("⏱️ Ping write failed (${e.message}) — disconnecting")
+                    disconnect()
                 }
             } catch (_: Exception) {
             }
@@ -751,6 +770,11 @@ class StreamClient(
                         out.flush()
                     }
                 }
+            } catch (e: IOException) {
+                if (isConnected) {
+                    diagLog("⏱️ Ping write failed (${e.message}) — disconnecting")
+                    disconnect()
+                }
             } catch (_: Exception) {
             }
         }
@@ -770,6 +794,11 @@ class StreamClient(
                         out.write(buffer.array())
                         out.flush()
                     }
+                }
+            } catch (e: IOException) {
+                if (isConnected) {
+                    diagLog("⏱️ Ping write failed (${e.message}) — disconnecting")
+                    disconnect()
                 }
             } catch (_: Exception) {
             }
@@ -837,6 +866,11 @@ class StreamClient(
                         out.write(buffer.array())
                         out.flush()
                     }
+                }
+            } catch (e: IOException) {
+                if (isConnected) {
+                    diagLog("⏱️ Ping write failed (${e.message}) — disconnecting")
+                    disconnect()
                 }
             } catch (_: Exception) {
             }
@@ -970,6 +1004,7 @@ class StreamClient(
         // costs nothing. Must clear a keyframe at panel resolution and the highest offered bitrate.
         private const val MAX_FRAME_SIZE = 32 * 1024 * 1024 // 32MB
         private const val PAIRING_READ_TIMEOUT_MS = 10_000
+        private const val STREAM_READ_TIMEOUT_MS = 5_000
         private const val KEYFRAME_REQUEST_INTERVAL_NS = 500_000_000L
         private const val KEYFRAME_STALE_INTERVAL_NS = 1_500_000_000L
         private const val MESSAGE_VIDEO_FRAME = 0
