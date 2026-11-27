@@ -487,6 +487,7 @@ class MainActivity : AppCompatActivity() {
 
                     override fun onScaleBegin(detector: android.view.ScaleGestureDetector): Boolean {
                         isPinchZooming = false
+                        if (!prefs.gesturePinchZoomEnabled) return false
                         lastFocusX = detector.focusX
                         lastFocusY = detector.focusY
                         return true
@@ -935,6 +936,32 @@ class MainActivity : AppCompatActivity() {
             prefs.resetOverlayPositions()
             restoreSettingsButtonPosition()
             Toast.makeText(this, "Overlay positions reset", Toast.LENGTH_SHORT).show()
+        }
+
+        // Gestures section switches
+        view.findViewById<SwitchMaterial>(R.id.gesturePinchZoomSwitch)?.apply {
+            isChecked = prefs.gesturePinchZoomEnabled
+            setOnCheckedChangeListener { _, checked -> prefs.gesturePinchZoomEnabled = checked }
+        }
+        view.findViewById<SwitchMaterial>(R.id.gestureMissionControlSwitch)?.apply {
+            isChecked = prefs.gestureMissionControlEnabled
+            setOnCheckedChangeListener { _, checked -> prefs.gestureMissionControlEnabled = checked }
+        }
+        view.findViewById<SwitchMaterial>(R.id.gestureAppExposeSwitch)?.apply {
+            isChecked = prefs.gestureAppExposeEnabled
+            setOnCheckedChangeListener { _, checked -> prefs.gestureAppExposeEnabled = checked }
+        }
+        view.findViewById<SwitchMaterial>(R.id.gestureSwitchSpacesSwitch)?.apply {
+            isChecked = prefs.gestureSwitchSpacesEnabled
+            setOnCheckedChangeListener { _, checked -> prefs.gestureSwitchSpacesEnabled = checked }
+        }
+        view.findViewById<SwitchMaterial>(R.id.gestureShowDesktopSwitch)?.apply {
+            isChecked = prefs.gestureShowDesktopEnabled
+            setOnCheckedChangeListener { _, checked -> prefs.gestureShowDesktopEnabled = checked }
+        }
+        view.findViewById<SwitchMaterial>(R.id.gestureAppsSwitch)?.apply {
+            isChecked = prefs.gestureAppsEnabled
+            setOnCheckedChangeListener { _, checked -> prefs.gestureAppsEnabled = checked }
         }
 
         opacitySlider.addOnChangeListener { _, value, _ ->
@@ -2362,18 +2389,26 @@ class MainActivity : AppCompatActivity() {
                         multiFingerTriggered = true
                         if (multiFingerMaxCount >= 4) {
                             if (dy < -swipeThreshold && absY >= absX) {
-                                streamClient?.sendSystemAction(StreamClient.SYSTEM_ACTION_SHOW_DESKTOP)
+                                if (prefs.gestureShowDesktopEnabled) {
+                                    streamClient?.sendSystemAction(StreamClient.SYSTEM_ACTION_SHOW_DESKTOP)
+                                }
                             } else if (dy > swipeThreshold && absY >= absX) {
-                                streamClient?.sendSystemAction(StreamClient.SYSTEM_ACTION_APPS)
+                                if (prefs.gestureAppsEnabled) {
+                                    streamClient?.sendSystemAction(StreamClient.SYSTEM_ACTION_APPS)
+                                }
                             }
                         } else {
                             if (absY >= absX) {
                                 if (dy < 0) {
-                                    streamClient?.sendSystemAction(StreamClient.SYSTEM_ACTION_MISSION_CONTROL)
+                                    if (prefs.gestureMissionControlEnabled) {
+                                        streamClient?.sendSystemAction(StreamClient.SYSTEM_ACTION_MISSION_CONTROL)
+                                    }
                                 } else {
-                                    streamClient?.sendSystemAction(StreamClient.SYSTEM_ACTION_APP_EXPOSE)
+                                    if (prefs.gestureAppExposeEnabled) {
+                                        streamClient?.sendSystemAction(StreamClient.SYSTEM_ACTION_APP_EXPOSE)
+                                    }
                                 }
-                            } else {
+                            } else if (prefs.gestureSwitchSpacesEnabled) {
                                 if (dx < 0) {
                                     streamClient?.sendSystemAction(StreamClient.SYSTEM_ACTION_SPACE_NEXT)
                                 } else {
@@ -2386,7 +2421,9 @@ class MainActivity : AppCompatActivity() {
             }
 
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                if (multiFingerActive && !multiFingerTriggered && action == MotionEvent.ACTION_UP && multiFingerMaxCount >= 4) {
+                if (multiFingerActive && !multiFingerTriggered && action == MotionEvent.ACTION_UP &&
+                    multiFingerMaxCount >= 4 && prefs.gestureAppsEnabled
+                ) {
                     streamClient?.sendSystemAction(StreamClient.SYSTEM_ACTION_APPS)
                 }
                 multiFingerActive = false

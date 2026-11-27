@@ -54,6 +54,31 @@ class PreferencesManager(
         get() = prefs.getInt("scan_interval_seconds", 10)
         set(value) = prefs.edit().putInt("scan_interval_seconds", value).apply()
 
+    // Individual Gesture toggles (macOS Trackpad style)
+    var gesturePinchZoomEnabled: Boolean
+        get() = prefs.getBoolean("gesture_pinch_zoom", true)
+        set(value) = prefs.edit().putBoolean("gesture_pinch_zoom", value).apply()
+
+    var gestureMissionControlEnabled: Boolean
+        get() = prefs.getBoolean("gesture_mission_control", true)
+        set(value) = prefs.edit().putBoolean("gesture_mission_control", value).apply()
+
+    var gestureAppExposeEnabled: Boolean
+        get() = prefs.getBoolean("gesture_app_expose", true)
+        set(value) = prefs.edit().putBoolean("gesture_app_expose", value).apply()
+
+    var gestureSwitchSpacesEnabled: Boolean
+        get() = prefs.getBoolean("gesture_switch_spaces", true)
+        set(value) = prefs.edit().putBoolean("gesture_switch_spaces", value).apply()
+
+    var gestureShowDesktopEnabled: Boolean
+        get() = prefs.getBoolean("gesture_show_desktop", true)
+        set(value) = prefs.edit().putBoolean("gesture_show_desktop", value).apply()
+
+    var gestureAppsEnabled: Boolean
+        get() = prefs.getBoolean("gesture_apps", true)
+        set(value) = prefs.edit().putBoolean("gesture_apps", value).apply()
+
     // Overlay restore trigger mode: "notch" (top-center handle) or "button" (draggable SideKick floating icon)
     var overlayTriggerMode: String
         get() = prefs.getString("overlay_trigger_mode", TRIGGER_NOTCH) ?: TRIGGER_NOTCH

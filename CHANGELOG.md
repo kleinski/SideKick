@@ -17,6 +17,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+<a id="1.2.24"></a>
+## [1.2.24] - 2026-11-27 — Android Gestures Settings Section
+
+### Added
+- **Dedicated *Gestures* Section in Android Settings (`dialog_settings.xml`, `PreferencesManager.kt`, `MainActivity.kt`):**
+  - Added individual on/off switches (macOS Trackpad style) for **Pinch to Zoom & Pan**, **Mission Control**, **App Exposé**, **Switch Spaces**, **Show Desktop**, and **Open Mac Apps**, persisted in `SharedPreferences` and wrapped in a scrollable settings modal.
+
+---
+
 <a id="1.2.23"></a>
 ## [1.2.23] - 2026-11-27 — Fix macOS Space Switching (`Ctrl+←/→` & 3-Finger Swipe)
 
