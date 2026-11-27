@@ -42,6 +42,7 @@ While the original [**SideScreen**](https://github.com/tranvuongquocdat/SideScre
 > **Which one should you choose?**
 > - Choose [**SideScreen Pro**](https://www.sidescreen.dev/pro.html) (paid one-time license by Tran Vuong Quoc Dat / WNX Studio) if you want **multiple tablets connected simultaneously to one Mac** (up to 3), **Mac sound routed to your tablet**, and a direct way to support the original creator.
 > - Choose **SideKick** (this free, MIT-licensed fork) if you want **one tablet switching seamlessly between multiple MacBooks**, **AES-256-GCM wireless encryption**, **hardware/on-screen keyboard & Mac shortcut forwarding**, **zoom/pan controls**, and an **on-demand virtual display** that disappears automatically on disconnect.
+> - **But, why not use Side Screen and SideKick in parallel? 😉** Thanks to separate app/package IDs (`com.sidescreen.app` vs. `com.sidekick.app`) and configurable ports, both apps can happily live side by side on the same Mac and Android tablet.
 
 ### Comparison: `SideScreen` (Free) vs. `SideScreen Pro` vs. `SideKick`
 
