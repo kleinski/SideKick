@@ -17,6 +17,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+<a id="1.2.18"></a>
+## [1.2.18] - 2026-11-27 — Distinct Menu Bar Icon & Settings Polish
+
+### Changed
+- **Distinct macOS Menu Bar Icon (`AppDelegate.swift`):** Switched from `display.2` to `laptopcomputer.and.ipad` so SideKick is immediately distinguishable from SideScreen in the menu bar.
+- **Streamlined `Overview` vs. `System` Settings (`SettingsWindow.swift`):** Removed the duplicate *Status & Permissions* card from *System* (all live status, permissions, ADB/LAN address, and Separate Spaces checks live in *Overview*; *System* now focuses cleanly on *Startup* and *Maintenance & Integrations*).
+- **Moved *Reset Settings* to Maintenance:** Removed the Reset icon button from the Settings header bar and placed **Reset Settings to Defaults** under *System → Maintenance & Integrations*.
+
+### Fixed
+- **Menu Bar Popover Contrast & Truncation (`MenuBarPopover.swift`):** Fixed low-contrast green `Settings…` label (`.foregroundColor(.primary)`) and shortened `Rotation` to `Rotate` so it never truncates.
+
+---
+
 <a id="1.2.17"></a>
 ## [1.2.17] - 2026-11-27 — Sidebar Settings Redesign, Teal-Green Theme & GitHub Releases Updater
 

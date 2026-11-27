@@ -323,29 +323,6 @@ struct SettingsView: View {
                         Text(selectedTab.rawValue)
                             .font(.system(size: 20, weight: .bold, design: .rounded))
                         Spacer()
-
-                        Button(action: { showResetConfirmation = true }) {
-                            Image(systemName: "arrow.counterclockwise")
-                                .font(.system(size: 12))
-                                .foregroundColor(.secondary)
-                                .frame(width: 28, height: 28)
-                                .background {
-                                    Circle().fill(.ultraThinMaterial)
-                                }
-                        }
-                        .buttonStyle(.plain)
-                        .help("Reset settings to defaults")
-                        .alert("Reset Settings", isPresented: $showResetConfirmation) {
-                            Button("Cancel", role: .cancel) { }
-                            Button("Reset", role: .destructive) {
-                                settings.resetToDefaults()
-                                if let window = NSApp.windows.first(where: { $0.title == "SideKick" }) {
-                                    window.center()
-                                }
-                            }
-                        } message: {
-                            Text("This will reset all settings to default values.")
-                        }
                     }
                     .padding(.horizontal, 24)
                     .padding(.top, 18)
@@ -478,11 +455,30 @@ struct SettingsView: View {
                     value: settings.connectionMode == .wireless ? "Wi-Fi (Bonjour)" : "USB-C Cable",
                     color: SideKickTheme.accent
                 )
-                overviewStatusRow(
-                    label: "Listening Port",
-                    value: settings.isRunning ? "Port \(settings.port)" : "Stopped",
-                    color: settings.isRunning ? SideKickTheme.accent : .secondary
-                )
+                if settings.connectionMode == .usb {
+                    overviewStatusRow(
+                        label: "ADB / USB Device",
+                        value: settings.adbInstalled
+                            ? (settings.usbDeviceConnected ? "Detected" : "Waiting for cable")
+                            : "ADB missing",
+                        color: settings.adbInstalled && settings.usbDeviceConnected ? SideKickTheme.accent : .orange
+                    )
+                } else {
+                    overviewStatusRow(
+                        label: "Listening on",
+                        value: settings.isRunning
+                            ? (settings.listeningAddress.map { "\($0):\(settings.port)" } ?? "Port \(settings.port)")
+                            : "Stopped",
+                        color: settings.isRunning ? SideKickTheme.accent : .secondary
+                    )
+                }
+                if !settings.displaysHaveSeparateSpaces {
+                    overviewStatusRow(
+                        label: "Separate Spaces",
+                        value: "Disabled (fullscreen may blank)",
+                        color: .orange
+                    )
+                }
             }
         }
 
@@ -1508,136 +1504,7 @@ struct SettingsView: View {
             }
         }
 
-        // Status
-        FrostedGroupBox(title: "Status & Permissions", icon: "checkmark.circle") {
-            VStack(alignment: .leading, spacing: 12) {
-                StatusRow(title: "Virtual Display",
-                          status: settings.displayCreated ? "Active" : (settings.isRunning ? "Standby (on connect)" : "Inactive"),
-                          color: settings.displayCreated ? .green : (settings.isRunning ? .orange : .secondary),
-                          hint: "The macOS virtual display we render into. Created automatically only when a tablet connects, and removed when it disconnects so windows never get stranded on an unseen screen.")
-                StatusRow(title: "Client Connected",
-                          status: settings.clientConnected ? "Yes" : "No",
-                          color: settings.clientConnected ? .green : .secondary,
-                          hint: "Whether the Android client app currently has an active stream session.")
-                StatusRow(
-                    title: ProcessInfo.processInfo.operatingSystemVersion.majorVersion >= 26 ? "Screen & System Audio" : "Screen Recording",
-                    status: settings.hasScreenRecordingPermission ? "Granted" : "Required",
-                    color: settings.hasScreenRecordingPermission ? .green : .red,
-                    hint: "macOS privacy permission required to capture the virtual display. Grant in System Settings → Privacy & Security → Screen Recording."
-                )
-                StatusRow(title: "Accessibility",
-                          status: settings.hasAccessibilityPermission ? "Granted" : "Optional",
-                          color: settings.hasAccessibilityPermission ? .green : .orange,
-                          hint: "Optional permission. Required only if you want touch/tap input from the tablet to control the Mac. Streaming works without it.")
-                if settings.isRunning {
-                    StatusRow(title: "Capture Method",
-                              status: settings.captureMethod,
-                              color: settings.captureMethod.contains("fallback") ? .orange : .green,
-                              hint: "Which macOS API is currently capturing the virtual display. SCStream is the modern path; CGDisplayStream fallback activates if SCStream fails (e.g. on certain virtual display configs).")
-                }
-
-                // Mode-aware contextual rows
-                Divider().padding(.vertical, 4)
-                if settings.connectionMode == .usb {
-                    StatusRow(title: "ADB installed",
-                              status: settings.adbInstalled ? "Installed" : "Missing",
-                              color: settings.adbInstalled ? .green : .red,
-                              hint: "USB mode tunnels the TCP stream through the cable using `adb reverse`.")
-                    StatusRow(title: "ADB reverse",
-                              status: settings.adbReverseConfigured ? "OK" : "Pending",
-                              color: settings.adbReverseConfigured ? .green : .orange,
-                              hint: "Whether `adb reverse tcp:\(settings.port) tcp:\(settings.port)` is currently configured.")
-                    StatusRow(title: "USB device",
-                              status: settings.usbDeviceConnected ? "Detected" : "Not detected",
-                              color: settings.usbDeviceConnected ? .green : .red,
-                              hint: "An Android device authorized for ADB and visible to your Mac.")
-                } else {
-                    StatusRow(title: "WiFi",
-                              status: settings.wifiConnected ? "Connected" : "Disconnected",
-                              color: settings.wifiConnected ? .green : .red,
-                              hint: "Whether the Mac currently has a working internet route.")
-                    StatusRow(title: "Listening on",
-                              status: settings.listeningAddress.map { "\($0):\(settings.port)" } ?? "—",
-                              color: settings.listeningAddress != nil ? .green : .secondary,
-                              hint: "The LAN address the tablet must reach.")
-                }
-
-                if !settings.hasScreenRecordingPermission {
-                    screenRecordingWarningBanner
-                }
-
-                if !settings.displaysHaveSeparateSpaces {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack(spacing: 6) {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundColor(.orange)
-                            Text("Tablet goes black in fullscreen apps")
-                                .font(.system(size: 12, weight: .medium))
-                        }
-                        Text("\"Displays have separate Spaces\" is turned off, so macOS blanks every other display — including the tablet — whenever an app enters fullscreen. Turn it on in System Settings → Desktop & Dock → Mission Control, then log out and back in.")
-                            .font(.system(size: 11))
-                            .foregroundColor(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                        Button(action: {
-                            NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.Desktop-Settings.extension")!)
-                        }) {
-                            HStack {
-                                Image(systemName: "gear")
-                                Text("Open System Settings")
-                            }
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.small)
-                    }
-                    .padding(10)
-                    .background(Color.orange.opacity(0.1))
-                    .cornerRadius(8)
-                }
-
-                if !settings.hasAccessibilityPermission {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack(spacing: 6) {
-                            Image(systemName: "hand.tap.fill")
-                                .foregroundColor(.blue)
-                            Text("Enable Touch Control")
-                                .font(.system(size: 12, weight: .medium))
-                        }
-                        Text("Control your Mac from your tablet.")
-                            .font(.system(size: 11))
-                            .foregroundColor(.secondary)
-                        HStack(spacing: 8) {
-                            Button(action: {
-                                NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
-                            }) {
-                                HStack {
-                                    Image(systemName: "gear")
-                                    Text("Open Settings")
-                                }
-                                .frame(maxWidth: .infinity)
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .controlSize(.small)
-
-                            Button(action: {
-                                (NSApp.delegate as? AppDelegate)?.resetAccessibilityPermissionAndReprompt()
-                            }) {
-                                HStack {
-                                    Image(systemName: "arrow.triangle.2.circlepath")
-                                    Text("Reset & Prompt")
-                                }
-                            }
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
-                        }
-                    }
-                    .padding(10)
-                    .background(Color.blue.opacity(0.08))
-                    .cornerRadius(8)
-                }
-            }
-        }
-
-        // Maintenance & Integrations (moved from Menu Bar into Settings)
+        // Maintenance & Integrations (live status & permissions live in Overview)
         FrostedGroupBox(title: "Maintenance & Integrations", icon: "wrench.and.screwdriver") {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 12) {
@@ -1663,6 +1530,38 @@ struct SettingsView: View {
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
+                }
+
+                Divider()
+
+                HStack(spacing: 12) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Reset Settings to Defaults")
+                            .font(.system(size: 12, weight: .medium))
+                        Text("Restores resolution, rotation, bitrate, and connection options to their default values.")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer()
+                    Button(action: { showResetConfirmation = true }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "arrow.counterclockwise")
+                            Text("Reset Settings")
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .alert("Reset Settings", isPresented: $showResetConfirmation) {
+                        Button("Cancel", role: .cancel) { }
+                        Button("Reset", role: .destructive) {
+                            settings.resetToDefaults()
+                            if let window = NSApp.windows.first(where: { $0.title == "SideKick" }) {
+                                window.center()
+                            }
+                        }
+                    } message: {
+                        Text("This will reset all settings to default values.")
+                    }
                 }
 
                 if FileManager.default.fileExists(atPath: "/Applications/Vorssaint.app") {

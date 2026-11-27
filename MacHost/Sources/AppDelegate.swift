@@ -455,7 +455,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 
         if let button = statusItem?.button {
-            button.image = NSImage(systemSymbolName: "display.2", accessibilityDescription: "SideKick")
+            button.image = NSImage(systemSymbolName: "laptopcomputer.and.ipad", accessibilityDescription: "SideKick")
             button.target = self
             button.action = #selector(statusBarButtonClicked(_:))
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])

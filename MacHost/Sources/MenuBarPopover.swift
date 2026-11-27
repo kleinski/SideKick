@@ -158,8 +158,9 @@ struct MenuBarPopoverView: View {
                 Image(systemName: "rotate.right")
                     .frame(width: 16)
                     .foregroundColor(.accentColor)
-                Text("Rotation")
+                Text("Rotate")
                     .font(.system(size: 12, weight: .medium))
+                    .fixedSize()
                 Spacer()
                 Picker("", selection: $settings.rotation) {
                     Text("0°").tag(0)
@@ -211,6 +212,7 @@ struct MenuBarPopoverView: View {
                         Image(systemName: "gearshape")
                         Text("Settings…")
                     }
+                    .foregroundColor(.primary)
                 }
                 .buttonStyle(.borderless)
                 .font(.system(size: 12))
