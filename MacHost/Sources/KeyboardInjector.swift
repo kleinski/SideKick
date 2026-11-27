@@ -9,15 +9,37 @@ enum KeyboardInjector {
     private static let modAlt: UInt8 = 4
     private static let modCmd: UInt8 = 8
 
+    private static let arrowKeys: Set<CGKeyCode> = [
+        CGKeyCode(kVK_LeftArrow),
+        CGKeyCode(kVK_RightArrow),
+        CGKeyCode(kVK_UpArrow),
+        CGKeyCode(kVK_DownArrow),
+    ]
+
     static func injectKeyEvent(androidKeyCode: Int, isDown: Bool, modifiers: UInt8) {
         guard let macKey = mapAndroidKeyCode(androidKeyCode) else { return }
-        guard let event = CGEvent(keyboardEventSource: nil, virtualKey: macKey, keyDown: isDown) else { return }
+
+        // macOS WindowServer symbolic hotkeys (Move left/right a space) require a full
+        // Control keyDown -> Arrow keyDown/Up (with SecondaryFn + NumericPad) -> Control keyUp sequence.
+        if modifiers == modCtrl && (macKey == CGKeyCode(kVK_LeftArrow) || macKey == CGKeyCode(kVK_RightArrow)) {
+            if isDown {
+                postControlArrow(macKey)
+            }
+            return
+        }
+
+        let source = CGEventSource(stateID: .hidSystemState)
+        guard let event = CGEvent(keyboardEventSource: source, virtualKey: macKey, keyDown: isDown) else { return }
 
         var flags: CGEventFlags = []
         if (modifiers & modShift) != 0 { flags.insert(.maskShift) }
         if (modifiers & modCtrl) != 0 { flags.insert(.maskControl) }
         if (modifiers & modAlt) != 0 { flags.insert(.maskAlternate) }
         if (modifiers & modCmd) != 0 { flags.insert(.maskCommand) }
+        if arrowKeys.contains(macKey) {
+            flags.insert(.maskSecondaryFn)
+            flags.insert(.maskNumericPad)
+        }
         event.flags = flags
 
         event.post(tap: .cghidEventTap)
@@ -235,12 +257,26 @@ enum KeyboardInjector {
     }
 
     private static func postControlArrow(_ key: CGKeyCode) {
-        if let down = CGEvent(keyboardEventSource: nil, virtualKey: key, keyDown: true),
-           let up = CGEvent(keyboardEventSource: nil, virtualKey: key, keyDown: false) {
-            down.flags = .maskControl
-            up.flags = .maskControl
-            down.post(tap: .cghidEventTap)
-            up.post(tap: .cghidEventTap)
+        DispatchQueue.global(qos: .userInteractive).async {
+            let source = CGEventSource(stateID: .hidSystemState)
+            let arrowFlags: CGEventFlags = [.maskControl, .maskSecondaryFn, .maskNumericPad]
+
+            let ctrlDown = CGEvent(keyboardEventSource: source, virtualKey: CGKeyCode(kVK_Control), keyDown: true)
+            ctrlDown?.flags = .maskControl
+            let keyDown = CGEvent(keyboardEventSource: source, virtualKey: key, keyDown: true)
+            keyDown?.flags = arrowFlags
+            let keyUp = CGEvent(keyboardEventSource: source, virtualKey: key, keyDown: false)
+            keyUp?.flags = arrowFlags
+            let ctrlUp = CGEvent(keyboardEventSource: source, virtualKey: CGKeyCode(kVK_Control), keyDown: false)
+            ctrlUp?.flags = []
+
+            ctrlDown?.post(tap: .cghidEventTap)
+            usleep(12_000)
+            keyDown?.post(tap: .cghidEventTap)
+            usleep(15_000)
+            keyUp?.post(tap: .cghidEventTap)
+            usleep(12_000)
+            ctrlUp?.post(tap: .cghidEventTap)
         }
     }
 }

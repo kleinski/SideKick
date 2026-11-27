@@ -17,6 +17,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+<a id="1.2.23"></a>
+## [1.2.23] - 2026-11-27 — Fix macOS Space Switching (`Ctrl+←/→` & 3-Finger Swipe)
+
+### Fixed
+- **macOS Space Switching via Gesture, Special Keys & Hardware Keyboard (`KeyboardInjector.swift`):**
+  - Added `.maskSecondaryFn` + `.maskNumericPad` flags to arrow key `CGEvent`s using `CGEventSource(stateID: .hidSystemState)` and wrapped `Ctrl+←/→` in an explicit `Control` down → `Arrow` down/up → `Control` up sequence so macOS WindowServer reliably triggers *Move left/right a space*.
+
+---
+
 <a id="1.2.22"></a>
 ## [1.2.22] - 2026-11-27 — Direct Window Dragging, Apple Multi-Touch Gestures, Streamlined Pill & Quick Help
 
