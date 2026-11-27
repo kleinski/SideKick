@@ -49,6 +49,11 @@ class PreferencesManager(
         get() = prefs.getBoolean("auto_connect_enabled", true)
         set(value) = prefs.edit().putBoolean("auto_connect_enabled", value).apply()
 
+    // Periodic Home Screen Mac scan interval in seconds (0 = Off, 5, 10, 30, 60)
+    var scanIntervalSeconds: Int
+        get() = prefs.getInt("scan_interval_seconds", 10)
+        set(value) = prefs.edit().putInt("scan_interval_seconds", value).apply()
+
     // Overlay restore trigger mode: "notch" (top-center handle) or "button" (draggable SideKick floating icon)
     var overlayTriggerMode: String
         get() = prefs.getString("overlay_trigger_mode", TRIGGER_NOTCH) ?: TRIGGER_NOTCH

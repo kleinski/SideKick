@@ -31,7 +31,7 @@
         android:id="@+id/statusBar"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
+        android:layout_marginTop="24dp"
         android:layout_marginHorizontal="12dp"
         android:background="@drawable/overlay_pill_bg"
         android:elevation="12dp"
@@ -617,11 +617,12 @@
             android:contentDescription="Toggle SideKick Overlay" />
     </FrameLayout>
 
-    <!-- Subtle top-center notch handle to restore the overlay when hidden -->
+    <!-- Subtle top-center notch handle to toggle the overlay on/off -->
     <FrameLayout
         android:id="@+id/overlayRestoreHandle"
         android:layout_width="88dp"
         android:layout_height="22dp"
+        android:elevation="14dp"
         android:visibility="gone"
         android:clickable="true"
         android:focusable="true"

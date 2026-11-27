@@ -927,6 +927,32 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "Overlay positions reset", Toast.LENGTH_SHORT).show()
         }
 
+        val scanIntervalOptions =
+            listOf(
+                0 to view.findViewById<TextView>(R.id.scanIntervalOff),
+                5 to view.findViewById<TextView>(R.id.scanInterval5),
+                10 to view.findViewById<TextView>(R.id.scanInterval10),
+                30 to view.findViewById<TextView>(R.id.scanInterval30),
+                60 to view.findViewById<TextView>(R.id.scanInterval60),
+            )
+
+        fun updateScanIntervalUi() {
+            val current = prefs.scanIntervalSeconds
+            for ((sec, tv) in scanIntervalOptions) {
+                val active = sec == current
+                tv?.setBackgroundColor(if (active) Color.parseColor("#0FA982") else Color.TRANSPARENT)
+                tv?.setTextColor(if (active) Color.WHITE else Color.parseColor("#94A3B8"))
+            }
+        }
+        updateScanIntervalUi()
+        for ((sec, tv) in scanIntervalOptions) {
+            tv?.setOnClickListener {
+                prefs.scanIntervalSeconds = sec
+                updateScanIntervalUi()
+                wirelessController.onScanIntervalChanged()
+            }
+        }
+
         opacitySlider.addOnChangeListener { _, value, _ ->
             prefs.overlayOpacity = value
             updateOverlayOpacity(value)
@@ -1307,7 +1333,12 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding.overlayRestoreHandle.setOnClickListener {
-            if (prefs.hideSettingsButton) {
+            if (binding.statusBar.visibility == View.VISIBLE) {
+                binding.statusBar.visibility = View.GONE
+                closeAllPopovers()
+                revealHandler.removeCallbacks(hideSettingsButtonRunnable)
+                updateRestoreTriggerVisibility(overlayVisible = false)
+            } else if (prefs.hideSettingsButton) {
                 revealSettingsButtonTemporarily()
             } else {
                 binding.statusBar.visibility = View.VISIBLE
@@ -1392,7 +1423,8 @@ class MainActivity : AppCompatActivity() {
             binding.floatingTriggerButton.visibility = View.VISIBLE
         } else {
             binding.floatingTriggerButton.visibility = View.GONE
-            binding.overlayRestoreHandle.visibility = if (!overlayVisible) View.VISIBLE else View.GONE
+            // Keep Top Notch visible while streaming so tapping it toggles the overlay both on and off
+            binding.overlayRestoreHandle.visibility = View.VISIBLE
         }
     }
 
@@ -2463,8 +2495,14 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        wirelessController.onResume()
         // Only nudge about updates while idle — never over a live stream or the demo.
         if (!isStreamingUi) appUpdater.checkForUpdate()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        wirelessController.onPause()
     }
 
     override fun onDestroy() {

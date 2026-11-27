@@ -90,6 +90,8 @@ class WirelessTabController(
     private var onlineHostIds: Set<String> = emptySet()
     private var activeEntry: PairedHostStorage.Entry? = null
     private var scanJob: Job? = null
+    private var periodicScanJob: Job? = null
+    private var isActivityResumed = true
 
     /**
      * Set to true after an explicit Disconnect or error so we stay on the Mac selection list
@@ -204,6 +206,42 @@ class WirelessTabController(
         views.pairedIdle.visibility = if (next == State.PAIRED_IDLE) View.VISIBLE else View.GONE
         views.repair.visibility = if (next == State.REPAIR_NEEDED) View.VISIBLE else View.GONE
         views.permDenied.visibility = if (next == State.PERM_DENIED) View.VISIBLE else View.GONE
+        updatePeriodicScanLoop()
+    }
+
+    fun onResume() {
+        isActivityResumed = true
+        updatePeriodicScanLoop()
+    }
+
+    fun onPause() {
+        isActivityResumed = false
+        periodicScanJob?.cancel()
+        periodicScanJob = null
+    }
+
+    fun onScanIntervalChanged() {
+        updatePeriodicScanLoop()
+    }
+
+    private fun updatePeriodicScanLoop() {
+        periodicScanJob?.cancel()
+        periodicScanJob = null
+        val intervalSec = prefs.scanIntervalSeconds
+        if (!isActivityResumed || state != State.PAIRED_IDLE || intervalSec <= 0 || storage.loadAll().isEmpty()) {
+            return
+        }
+        periodicScanJob =
+            scope.launch {
+                while (isActivityResumed && state == State.PAIRED_IDLE && prefs.scanIntervalSeconds > 0) {
+                    delay(prefs.scanIntervalSeconds * 1_000L)
+                    if (!isActivityResumed || state != State.PAIRED_IDLE) break
+                    scanAndRefreshMacList(
+                        allowAutoConnect = !suppressAutoConnect && prefs.autoConnectEnabled,
+                        silent = true,
+                    )
+                }
+            }
     }
 
     /**
@@ -228,14 +266,19 @@ class WirelessTabController(
         }
     }
 
-    fun scanAndRefreshMacList(allowAutoConnect: Boolean) {
+    fun scanAndRefreshMacList(
+        allowAutoConnect: Boolean,
+        silent: Boolean = false,
+    ) {
         scanJob?.cancel()
         val entries = storage.loadAll()
         if (entries.isEmpty()) {
             transition(State.FIRST_TIME)
             return
         }
-        views.scanStatusText?.text = "Scanning Wi‑Fi for paired MacBooks…"
+        if (!silent) {
+            views.scanStatusText?.text = "Scanning Wi‑Fi for paired MacBooks…"
+        }
         scanJob =
             scope.launch {
                 val reachableIds = discovery.probeReachablePairedMacs(entries, storage)

@@ -17,6 +17,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+<a id="1.2.21"></a>
+## [1.2.21] - 2026-11-27 — Periodic Home Screen Mac Scan & Top Notch Toggle
+
+### Added
+- **Configurable Periodic Home Screen Mac Scan (`WirelessTabController.kt`, `dialog_settings.xml`):**
+  - Added an **Auto-Scan Interval** setting (`Off` | `5s` | `10s` | `30s` | `60s`, default `10s`) in *Overlay & Display Settings*.
+  - Silently refreshes online/offline status of paired MacBooks while the Home Screen is in the foreground (automatically pauses in `onPause()` or during active streams), and auto-connects when enabled and a single Mac comes online.
+
+### Changed
+- **Two-Way Top Notch Overlay Toggle (`MainActivity.kt`, `activity_main.xml`):** When **Top Notch** is selected as the Overlay Trigger, the notch handle now stays accessible above the Mini-Status-Pill so tapping it toggles the overlay both **on and off**.
+
+---
+
 <a id="1.2.20"></a>
 ## [1.2.20] - 2026-11-27 — Android Squircle Overlay Redesign, Apple Action Icon & Auto-Hide Keyboard Button
 
