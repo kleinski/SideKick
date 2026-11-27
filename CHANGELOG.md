@@ -17,6 +17,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+<a id="1.2.19"></a>
+## [1.2.19] - 2026-11-27 — Optional Colored Menu Bar Icon
+
+### Added
+- **Optional Colored Menu Bar Icon (`System → Menu Bar`):** Added a **Colored Menu Bar Icon** toggle in macOS Settings that tints the `laptopcomputer.and.ipad` menu bar icon in SideKick's signature teal-green (`#00C896` while streaming, `#0FA982` in standby, muted gray when stopped).
+
+---
+
 <a id="1.2.18"></a>
 ## [1.2.18] - 2026-11-27 — Distinct Menu Bar Icon & Settings Polish
 

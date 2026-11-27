@@ -455,7 +455,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 
         if let button = statusItem?.button {
-            button.image = NSImage(systemSymbolName: "laptopcomputer.and.ipad", accessibilityDescription: "SideKick")
             button.target = self
             button.action = #selector(statusBarButtonClicked(_:))
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
@@ -467,14 +466,40 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menu.autoenablesItems = false
         self.contextMenu = menu
 
-        // Dim the menu bar icon while the server is stopped — at-a-glance
-        // state without opening the menu.
-        settings.$isRunning
+        // Keep menu bar icon synced with server/stream state and optional SideKick teal color.
+        Publishers.CombineLatest3(settings.$isRunning, settings.$clientConnected, settings.$coloredMenuBarIcon)
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] running in
-                self?.statusItem?.button?.appearsDisabled = !running
+            .sink { [weak self] running, connected, colored in
+                self?.updateMenuBarIcon(running: running, connected: connected, colored: colored)
             }
             .store(in: &cancellables)
+    }
+
+    private func updateMenuBarIcon(running: Bool, connected: Bool, colored: Bool) {
+        guard let button = statusItem?.button else { return }
+        guard let base = NSImage(systemSymbolName: "laptopcomputer.and.ipad", accessibilityDescription: "SideKick") else { return }
+
+        if colored {
+            let tint: NSColor
+            if connected {
+                // Bright SideKick wave teal-green (#00C896) when actively streaming
+                tint = NSColor(srgbRed: 0.000, green: 0.784, blue: 0.588, alpha: 1.0)
+            } else if running {
+                // Signature SideKick teal (#0FA982) in standby
+                tint = NSColor(srgbRed: 0.059, green: 0.663, blue: 0.510, alpha: 1.0)
+            } else {
+                tint = NSColor.secondaryLabelColor
+            }
+            let config = NSImage.SymbolConfiguration(paletteColors: [tint])
+            let tinted = base.withSymbolConfiguration(config) ?? base
+            tinted.isTemplate = false
+            button.image = tinted
+            button.appearsDisabled = false
+        } else {
+            base.isTemplate = true
+            button.image = base
+            button.appearsDisabled = !running
+        }
     }
 
     @objc func statusBarButtonClicked(_ sender: NSStatusBarButton) {

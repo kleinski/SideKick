@@ -1504,6 +1504,22 @@ struct SettingsView: View {
             }
         }
 
+        // Menu Bar Appearance
+        FrostedGroupBox(title: "Menu Bar", icon: "menubar.rectangle") {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Colored Menu Bar Icon")
+                        .font(.system(size: 12, weight: .medium))
+                    Text("Tint the menu bar icon in SideKick teal-green when active (monochrome when off).")
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                }
+                Spacer()
+                Toggle("", isOn: $settings.coloredMenuBarIcon)
+                    .labelsHidden()
+            }
+        }
+
         // Maintenance & Integrations (live status & permissions live in Overview)
         FrostedGroupBox(title: "Maintenance & Integrations", icon: "wrench.and.screwdriver") {
             VStack(alignment: .leading, spacing: 12) {
@@ -1933,6 +1949,9 @@ class DisplaySettings: ObservableObject {
     @Published var autoStartStreamingOnLaunch: Bool {
         didSet { save("autoStartStreamingOnLaunch", autoStartStreamingOnLaunch) }
     }
+    @Published var coloredMenuBarIcon: Bool {
+        didSet { save("coloredMenuBarIcon", coloredMenuBarIcon) }
+    }
     @Published var startupMode: ConnectionMode {
         didSet { save("startupMode", startupMode.rawValue) }
     }
@@ -2028,6 +2047,7 @@ class DisplaySettings: ObservableObject {
         let modeRaw = defaults.string(forKey: keyPrefix + "connectionMode") ?? ConnectionMode.usb.rawValue
         self.connectionMode = ConnectionMode(rawValue: modeRaw) ?? .usb
         self.autoStartStreamingOnLaunch = defaults.object(forKey: keyPrefix + "autoStartStreamingOnLaunch") as? Bool ?? false
+        self.coloredMenuBarIcon = defaults.object(forKey: keyPrefix + "coloredMenuBarIcon") as? Bool ?? false
         let startupRaw = defaults.string(forKey: keyPrefix + "startupMode") ?? modeRaw
         self.startupMode = ConnectionMode(rawValue: startupRaw) ?? .usb
         self.wirelessEncryption = defaults.object(forKey: keyPrefix + "wirelessEncryption") as? Bool ?? true
