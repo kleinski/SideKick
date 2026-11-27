@@ -178,6 +178,9 @@ enum KeyboardInjector {
         case apps = 0
         case missionControl = 1
         case showDesktop = 2
+        case appExpose = 3
+        case spacePrev = 4
+        case spaceNext = 5
     }
 
     private typealias CoreDockSendNotificationFn = @convention(c) (CFString, UnsafeMutableRawPointer?) -> Void
@@ -190,7 +193,7 @@ enum KeyboardInjector {
         return unsafeBitCast(sym, to: CoreDockSendNotificationFn.self)
     }()
 
-    /// Triggers a macOS system action (Apps/Launchpad, Mission Control, or Show Desktop).
+    /// Triggers a macOS system action (Apps/Launchpad, Mission Control, Show Desktop, App Exposé, or Space switch).
     static func triggerSystemAction(_ rawAction: UInt8) {
         guard let action = MacSystemAction(rawValue: rawAction) else { return }
         switch action {
@@ -218,6 +221,26 @@ enum KeyboardInjector {
                 CGEvent(keyboardEventSource: nil, virtualKey: key, keyDown: true)?.post(tap: .cghidEventTap)
                 CGEvent(keyboardEventSource: nil, virtualKey: key, keyDown: false)?.post(tap: .cghidEventTap)
             }
+        case .appExpose:
+            if let send = coreDockSendNotification {
+                send("com.apple.expose.front.awake" as CFString, nil)
+            } else {
+                postControlArrow(CGKeyCode(kVK_DownArrow))
+            }
+        case .spacePrev:
+            postControlArrow(CGKeyCode(kVK_LeftArrow))
+        case .spaceNext:
+            postControlArrow(CGKeyCode(kVK_RightArrow))
+        }
+    }
+
+    private static func postControlArrow(_ key: CGKeyCode) {
+        if let down = CGEvent(keyboardEventSource: nil, virtualKey: key, keyDown: true),
+           let up = CGEvent(keyboardEventSource: nil, virtualKey: key, keyDown: false) {
+            down.flags = .maskControl
+            up.flags = .maskControl
+            down.post(tap: .cghidEventTap)
+            up.post(tap: .cghidEventTap)
         }
     }
 }

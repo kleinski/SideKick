@@ -1027,6 +1027,9 @@ class StreamClient(
         const val SYSTEM_ACTION_APPS = 0
         const val SYSTEM_ACTION_MISSION_CONTROL = 1
         const val SYSTEM_ACTION_SHOW_DESKTOP = 2
+        const val SYSTEM_ACTION_APP_EXPOSE = 3
+        const val SYSTEM_ACTION_SPACE_PREV = 4
+        const val SYSTEM_ACTION_SPACE_NEXT = 5
 
         /**
          * Codec-aware sync-frame (keyframe) detection on the legacy

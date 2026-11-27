@@ -17,6 +17,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+<a id="1.2.22"></a>
+## [1.2.22] - 2026-11-27 — Direct Window Dragging, Apple Multi-Touch Gestures, Streamlined Pill & Quick Help
+
+### Added
+- **Apple-Style Multi-Touch Gestures on Android & macOS:**
+  - **1-Finger Drag** now immediately grabs & moves macOS windows, selects text, and drags sliders (instead of scrolling).
+  - **2-Finger Tap** triggers Right Click; **2-Finger Drag** performs smooth scrolling with momentum.
+  - **3-Finger Swipes:** Up = **Mission Control**, Down = **App Exposé**, Left/Right = **Switch macOS Spaces** (`Ctrl+←/→`).
+  - **4-Finger Gestures:** Swipe Up = **Show Desktop**, Tap = **Open Mac Apps**.
+- **SideKick Quick Reference Popup (`?`):** Added a compact help dialog (`dialog_help.xml`) accessible from the Android Home Screen header and Overlay Settings header.
+
+### Changed
+- **Home Screen vs. Overlay Settings Cleanup:** Moved **Auto-Scan Interval** and **Updates** directly onto the Android Home Screen (alongside **Auto-Connect**) so *Overlay & Display Settings* contains only overlay options.
+- **No More `⋯` Menu in Mini-Status-Pill:** Removed the redundant `Hide Overlay` item and `⋯` menu; **Switch Mac** and **Settings** now sit directly in the Mini-Status-Pill.
+
+---
+
 <a id="1.2.21"></a>
 ## [1.2.21] - 2026-11-27 — Periodic Home Screen Mac Scan & Top Notch Toggle
 

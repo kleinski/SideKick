@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:scrollbars="none">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/modal_card_bg"
+        android:orientation="vertical"
+        android:padding="22dp">
+
+        <!-- Header -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="14dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="SideKick Quick Reference"
+                android:textColor="#FFFFFF"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <ImageView
+                android:id="@+id/helpCloseIcon"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:padding="6dp"
+                android:background="@drawable/overlay_action_bg"
+                android:src="@drawable/ic_close"
+                android:clickable="true"
+                android:focusable="true" />
+        </LinearLayout>
+
+        <!-- Group 1: Touch & Apple Gestures -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/settings_group_bg"
+            android:orientation="vertical"
+            android:padding="14dp"
+            android:layout_marginBottom="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="TOUCH &amp; APPLE GESTURES"
+                android:textColor="#00C896"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.06"
+                android:layout_marginBottom="8dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="• 1 Finger Tap / Double Tap — Click / Double Click\n• 1 Finger Drag — Grab &amp; move windows, select text\n• 1 Finger Hold or 2 Finger Tap — Right Click\n• 2 Finger Drag — Smooth Scroll (with momentum)\n• 2 Finger Pinch — Zoom &amp; Pan viewport\n• 3 Finger Swipe Up / Down — Mission Control / App Exposé\n• 3 Finger Swipe Left / Right — Switch macOS Spaces\n• 4 Finger Swipe Up — Show Desktop\n• 4 Finger Tap — Open Mac Apps"
+                android:textColor="#E2E8F0"
+                android:textSize="12sp"
+                android:lineSpacingExtra="4dp" />
+        </LinearLayout>
+
+        <!-- Group 2: Overlay Controls -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/settings_group_bg"
+            android:orientation="vertical"
+            android:padding="14dp"
+            android:layout_marginBottom="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="OVERLAY CONTROLS"
+                android:textColor="#00C896"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.06"
+                android:layout_marginBottom="8dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="• Top Notch / SideKick Button — Toggle overlay on or off\n• Drag Handle (⋮⋮) — Move the Mini-Pill anywhere (saved)\n•  Button — Apps, Mission Control &amp; Show Desktop\n• ⌘ Button — Sticky modifiers (⌘ ⌥ ⌃ ⇧) &amp; Mac shortcuts\n• 100% ▾ — Zoom -, 1:1 native pixels, Zoom +, Fit\n• Back Gesture — Restore overlay when hidden"
+                android:textColor="#E2E8F0"
+                android:textSize="12sp"
+                android:lineSpacingExtra="4dp" />
+        </LinearLayout>
+
+        <!-- Group 3: Mac Shortcuts -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/settings_group_bg"
+            android:orientation="vertical"
+            android:padding="14dp"
+            android:layout_marginBottom="14dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="MAC SHORTCUTS"
+                android:textColor="#00C896"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.06"
+                android:layout_marginBottom="8dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="• ⌘⇧T — Pull tablet to this Mac (Instant Takeover)\n• ⌘⇧D — Disconnect tablet &amp; remove virtual display\n• ⌘⇧W — Open SideKick Menu Bar Popover"
+                android:textColor="#E2E8F0"
+                android:textSize="12sp"
+                android:lineSpacingExtra="4dp" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/helpCloseButton"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:background="@drawable/overlay_action_active_bg"
+            android:gravity="center"
+            android:text="Got it"
+            android:textColor="#FFFFFF"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:clickable="true"
+            android:focusable="true" />
+    </LinearLayout>
+</ScrollView>

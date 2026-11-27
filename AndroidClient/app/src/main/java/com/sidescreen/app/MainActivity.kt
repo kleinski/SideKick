@@ -111,6 +111,11 @@ class MainActivity : AppCompatActivity() {
     private var panY = 0f
     private var isPinchZooming = false
     private lateinit var scaleGestureDetector: android.view.ScaleGestureDetector
+    private var multiFingerActive = false
+    private var multiFingerMaxCount = 0
+    private var multiFingerStartX = 0f
+    private var multiFingerStartY = 0f
+    private var multiFingerTriggered = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -481,7 +486,7 @@ class MainActivity : AppCompatActivity() {
                     private var lastFocusY = 0f
 
                     override fun onScaleBegin(detector: android.view.ScaleGestureDetector): Boolean {
-                        isPinchZooming = true
+                        isPinchZooming = false
                         lastFocusX = detector.focusX
                         lastFocusY = detector.focusY
                         return true
@@ -489,6 +494,13 @@ class MainActivity : AppCompatActivity() {
 
                     override fun onScale(detector: android.view.ScaleGestureDetector): Boolean {
                         val factor = detector.scaleFactor
+                        if (!isPinchZooming && kotlin.math.abs(factor - 1.0f) < 0.025f) {
+                            // Ignore tiny span jitter during parallel 2-finger scrolling/taps
+                            lastFocusX = detector.focusX
+                            lastFocusY = detector.focusY
+                            return false
+                        }
+                        isPinchZooming = true
                         if (factor.isFinite() && factor > 0f) {
                             val dx = detector.focusX - lastFocusX
                             val dy = detector.focusY - lastFocusY
@@ -508,18 +520,22 @@ class MainActivity : AppCompatActivity() {
             )
 
         val touchHandler: (View, MotionEvent) -> Boolean = { view, event ->
-            scaleGestureDetector.onTouchEvent(event)
-            if (isPinchZooming || scaleGestureDetector.isInProgress) {
-                if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) {
-                    isPinchZooming = false
-                }
+            if (!demoActive && handleMultiFingerAppleGestures(event)) {
                 true
             } else {
-                if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) {
-                    isPinchZooming = false
+                scaleGestureDetector.onTouchEvent(event)
+                if (isPinchZooming) {
+                    if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) {
+                        isPinchZooming = false
+                    }
+                    true
+                } else {
+                    if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) {
+                        isPinchZooming = false
+                    }
+                    if (demoActive) showDemoTouchHint(event) else handleTouch(view, event)
+                    true
                 }
-                if (demoActive) showDemoTouchHint(event) else handleTouch(view, event)
-                true
             }
         }
         binding.surfaceView.setOnTouchListener(touchHandler)
@@ -823,9 +839,8 @@ class MainActivity : AppCompatActivity() {
         val triggerNotchOption = view.findViewById<TextView>(R.id.triggerNotchOption)
         val triggerButtonOption = view.findViewById<TextView>(R.id.triggerButtonOption)
         val resetOverlayPositionsBtn = view.findViewById<View>(R.id.resetOverlayPositionsBtn)
-        val dialogAutoConnectSwitch = view.findViewById<SwitchMaterial>(R.id.dialogAutoConnectSwitch)
         val settingsVersionText = view.findViewById<TextView>(R.id.settingsVersionText)
-        val checkUpdatesButton = view.findViewById<View>(R.id.checkUpdatesButton)
+        val settingsHelpButton = view.findViewById<View>(R.id.settingsHelpButton)
         val opacitySlider = view.findViewById<Slider>(R.id.opacitySlider)
         val opacityValue = view.findViewById<TextView>(R.id.opacityValue)
         val disconnectButton = view.findViewById<View>(R.id.disconnectSettingsButton)
@@ -864,19 +879,14 @@ class MainActivity : AppCompatActivity() {
 
         // Load current settings
         settingsVersionText?.text = "v${appVersionName()}"
-        checkUpdatesButton?.setOnClickListener {
-            appUpdater.checkForUpdate(interactive = true)
+        settingsHelpButton?.setOnClickListener {
+            dialog.dismiss()
+            showHelpDialog()
         }
         showStatsSwitch.isChecked = prefs.showStatsOverlay
         hideSettingsSwitch.isChecked = prefs.hideSettingsButton
-        dialogAutoConnectSwitch?.isChecked = prefs.autoConnectEnabled
         opacitySlider.value = prefs.overlayOpacity
         opacityValue.text = "${(prefs.overlayOpacity * 100).toInt()}%"
-
-        dialogAutoConnectSwitch?.setOnCheckedChangeListener { _, isChecked ->
-            prefs.autoConnectEnabled = isChecked
-            binding.autoConnectSwitch.isChecked = isChecked
-        }
 
         showStatsSwitch.setOnCheckedChangeListener { _, isChecked ->
             prefs.showStatsOverlay = isChecked
@@ -925,32 +935,6 @@ class MainActivity : AppCompatActivity() {
             prefs.resetOverlayPositions()
             restoreSettingsButtonPosition()
             Toast.makeText(this, "Overlay positions reset", Toast.LENGTH_SHORT).show()
-        }
-
-        val scanIntervalOptions =
-            listOf(
-                0 to view.findViewById<TextView>(R.id.scanIntervalOff),
-                5 to view.findViewById<TextView>(R.id.scanInterval5),
-                10 to view.findViewById<TextView>(R.id.scanInterval10),
-                30 to view.findViewById<TextView>(R.id.scanInterval30),
-                60 to view.findViewById<TextView>(R.id.scanInterval60),
-            )
-
-        fun updateScanIntervalUi() {
-            val current = prefs.scanIntervalSeconds
-            for ((sec, tv) in scanIntervalOptions) {
-                val active = sec == current
-                tv?.setBackgroundColor(if (active) Color.parseColor("#0FA982") else Color.TRANSPARENT)
-                tv?.setTextColor(if (active) Color.WHITE else Color.parseColor("#94A3B8"))
-            }
-        }
-        updateScanIntervalUi()
-        for ((sec, tv) in scanIntervalOptions) {
-            tv?.setOnClickListener {
-                prefs.scanIntervalSeconds = sec
-                updateScanIntervalUi()
-                wirelessController.onScanIntervalChanged()
-            }
         }
 
         opacitySlider.addOnChangeListener { _, value, _ ->
@@ -1012,11 +996,9 @@ class MainActivity : AppCompatActivity() {
     private fun closeAllPopovers() {
         binding.macActionsPopover.visibility = View.GONE
         binding.zoomPopover.visibility = View.GONE
-        binding.moreMenuPopover.visibility = View.GONE
         binding.specialKeysPanel.visibility = View.GONE
         binding.macActionsButton.setBackgroundResource(R.drawable.overlay_action_bg)
         binding.zoomMenuButton.setBackgroundResource(R.drawable.overlay_action_bg)
-        binding.moreMenuButton.setBackgroundResource(R.drawable.overlay_action_bg)
         updateSpecialKeysBadge()
     }
 
@@ -1031,9 +1013,25 @@ class MainActivity : AppCompatActivity() {
             when (popover) {
                 binding.macActionsPopover -> binding.macActionsButton.setBackgroundResource(R.drawable.overlay_action_active_bg)
                 binding.zoomPopover -> binding.zoomMenuButton.setBackgroundResource(R.drawable.overlay_action_active_bg)
-                binding.moreMenuPopover -> binding.moreMenuButton.setBackgroundResource(R.drawable.overlay_action_active_bg)
             }
             popover.post { positionPopoverBelowAnchor(popover, anchor) }
+        }
+    }
+
+    @SuppressLint("InflateParams")
+    private fun showHelpDialog() {
+        val dialog = Dialog(this)
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        dialog.setContentView(R.layout.dialog_help)
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        dialog.findViewById<View>(R.id.helpCloseIcon)?.setOnClickListener { dialog.dismiss() }
+        dialog.findViewById<View>(R.id.helpCloseButton)?.setOnClickListener { dialog.dismiss() }
+        dialog.show()
+        dialog.window?.let { win ->
+            val dm = resources.displayMetrics
+            val maxW = (500 * dm.density).toInt()
+            val targetW = minOf((dm.widthPixels - 48 * dm.density).toInt(), maxW)
+            win.setLayout(targetW, WindowManager.LayoutParams.WRAP_CONTENT)
         }
     }
 
@@ -1190,6 +1188,39 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupSettingsButton() {
+        binding.homeCheckUpdatesButton.setOnClickListener {
+            appUpdater.checkForUpdate(interactive = true)
+        }
+        binding.homeHelpButton.setOnClickListener {
+            showHelpDialog()
+        }
+
+        val homeScanIntervals =
+            listOf(
+                0 to binding.scanIntervalOff,
+                5 to binding.scanInterval5,
+                10 to binding.scanInterval10,
+                30 to binding.scanInterval30,
+                60 to binding.scanInterval60,
+            )
+
+        fun updateHomeScanIntervalUi() {
+            val current = prefs.scanIntervalSeconds
+            for ((sec, tv) in homeScanIntervals) {
+                val active = sec == current
+                tv.setBackgroundColor(if (active) Color.parseColor("#0FA982") else Color.TRANSPARENT)
+                tv.setTextColor(if (active) Color.WHITE else Color.parseColor("#94A3B8"))
+            }
+        }
+        updateHomeScanIntervalUi()
+        for ((sec, tv) in homeScanIntervals) {
+            tv.setOnClickListener {
+                prefs.scanIntervalSeconds = sec
+                updateHomeScanIntervalUi()
+                wirelessController.onScanIntervalChanged()
+            }
+        }
+
         binding.settingsButton.setOnClickListener {
             closeAllPopovers()
             showSettingsDialog()
@@ -1200,9 +1231,6 @@ class MainActivity : AppCompatActivity() {
         }
         binding.zoomMenuButton.setOnClickListener {
             togglePopover(binding.zoomPopover, binding.zoomMenuButton)
-        }
-        binding.moreMenuButton.setOnClickListener {
-            togglePopover(binding.moreMenuPopover, binding.moreMenuButton)
         }
 
         binding.actionAppsButton.setOnClickListener {
@@ -1325,13 +1353,6 @@ class MainActivity : AppCompatActivity() {
             showSwitchMacMenu()
         }
 
-        binding.hideOverlayButton.setOnClickListener {
-            binding.statusBar.visibility = View.GONE
-            closeAllPopovers()
-            updateRestoreTriggerVisibility(overlayVisible = false)
-            revealHandler.removeCallbacks(hideSettingsButtonRunnable)
-        }
-
         binding.overlayRestoreHandle.setOnClickListener {
             if (binding.statusBar.visibility == View.VISIBLE) {
                 binding.statusBar.visibility = View.GONE
@@ -1407,7 +1428,6 @@ class MainActivity : AppCompatActivity() {
         updateRestoreTriggerVisibility(overlayVisible = showBar)
         val showSwitchMac = isConnected && !demoActive && pairedHostStorage.loadAll().size > 1
         binding.switchMacButton.visibility = if (showSwitchMac) View.VISIBLE else View.GONE
-        binding.switchMacDivider.visibility = if (showSwitchMac) View.VISIBLE else View.GONE
         updateKeyboardButtonState()
     }
 
@@ -2281,6 +2301,100 @@ class MainActivity : AppCompatActivity() {
         } catch (e: Exception) {
             log("⚠️ Cleanup error: ${e.message}")
         }
+    }
+
+    /**
+     * Recognizes Apple-style 3- and 4-finger multi-touch gestures directly on the tablet:
+     * - 3-finger swipe up/down -> Mission Control / App Exposé
+     * - 3-finger swipe left/right -> Next / Previous macOS Space
+     * - 4-finger swipe up -> Show Desktop
+     * - 4-finger tap -> Open Mac Apps
+     */
+    private fun handleMultiFingerAppleGestures(event: MotionEvent): Boolean {
+        val count = event.pointerCount
+        val action = event.actionMasked
+        val swipeThreshold = 72f * resources.displayMetrics.density
+
+        if (!multiFingerActive && count < 3) {
+            return false
+        }
+
+        fun centroid(): Pair<Float, Float> {
+            var sx = 0f
+            var sy = 0f
+            for (i in 0 until event.pointerCount) {
+                sx += event.getX(i)
+                sy += event.getY(i)
+            }
+            val n = event.pointerCount.coerceAtLeast(1).toFloat()
+            return (sx / n) to (sy / n)
+        }
+
+        when (action) {
+            MotionEvent.ACTION_POINTER_DOWN -> {
+                if (count >= 3) {
+                    if (!multiFingerActive) {
+                        // Cancel any in-progress 1- or 2-finger touch on Mac
+                        streamClient?.sendTouch(0.5f, 0.5f, 2, 1)
+                        multiFingerActive = true
+                        multiFingerTriggered = false
+                        val (cx, cy) = centroid()
+                        multiFingerStartX = cx
+                        multiFingerStartY = cy
+                    }
+                    if (count > multiFingerMaxCount) {
+                        multiFingerMaxCount = count
+                        val (cx, cy) = centroid()
+                        multiFingerStartX = cx
+                        multiFingerStartY = cy
+                    }
+                }
+            }
+
+            MotionEvent.ACTION_MOVE -> {
+                if (multiFingerActive && !multiFingerTriggered && count >= 3) {
+                    val (cx, cy) = centroid()
+                    val dx = cx - multiFingerStartX
+                    val dy = cy - multiFingerStartY
+                    val absX = kotlin.math.abs(dx)
+                    val absY = kotlin.math.abs(dy)
+                    if (absX > swipeThreshold || absY > swipeThreshold) {
+                        multiFingerTriggered = true
+                        if (multiFingerMaxCount >= 4) {
+                            if (dy < -swipeThreshold && absY >= absX) {
+                                streamClient?.sendSystemAction(StreamClient.SYSTEM_ACTION_SHOW_DESKTOP)
+                            } else if (dy > swipeThreshold && absY >= absX) {
+                                streamClient?.sendSystemAction(StreamClient.SYSTEM_ACTION_APPS)
+                            }
+                        } else {
+                            if (absY >= absX) {
+                                if (dy < 0) {
+                                    streamClient?.sendSystemAction(StreamClient.SYSTEM_ACTION_MISSION_CONTROL)
+                                } else {
+                                    streamClient?.sendSystemAction(StreamClient.SYSTEM_ACTION_APP_EXPOSE)
+                                }
+                            } else {
+                                if (dx < 0) {
+                                    streamClient?.sendSystemAction(StreamClient.SYSTEM_ACTION_SPACE_NEXT)
+                                } else {
+                                    streamClient?.sendSystemAction(StreamClient.SYSTEM_ACTION_SPACE_PREV)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                if (multiFingerActive && !multiFingerTriggered && action == MotionEvent.ACTION_UP && multiFingerMaxCount >= 4) {
+                    streamClient?.sendSystemAction(StreamClient.SYSTEM_ACTION_APPS)
+                }
+                multiFingerActive = false
+                multiFingerMaxCount = 0
+                multiFingerTriggered = false
+            }
+        }
+        return true
     }
 
     private fun handleTouch(

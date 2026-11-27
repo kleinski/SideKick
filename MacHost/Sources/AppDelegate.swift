@@ -1391,18 +1391,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         switch gestureState {
         case .pending:
             if totalDistance > GestureThresholds.tapMaxDistance {
+                // Direct 1-finger drag: grabs window titlebars, selects text, drags sliders naturally
                 cancelLongPressTimer()
-                gestureState = .scrolling
-                let sx = deltaX * GestureThresholds.scrollSensitivity
-                let sy = deltaY * GestureThresholds.scrollSensitivity
-                injectScrollEvent(deltaX: sx, deltaY: sy, at: point)
-                lastScrollDeltaX = sx
-                lastScrollDeltaY = sy
+                gestureState = .dragging
+                injectMouseDown(at: touchStartPosition)
+                injectMouseDragged(to: point)
             }
 
         case .longPressReady:
             if totalDistance > GestureThresholds.tapMaxDistance {
-                // Long press + drag → left mouse drag
                 gestureState = .dragging
                 injectMouseDown(at: touchStartPosition)
                 injectMouseDragged(to: point)
@@ -1492,14 +1489,23 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         case 0: // Down
             cancelLongPressTimer()
             stopMomentumScroll()
+            if gestureState == .dragging {
+                injectMouseUp(at: touchLastPosition)
+            }
             gestureState = .idle  // Reset so 2-finger detection starts fresh
             initialPinchDistance = distance
             lastPinchDistance = distance
+            touchStartPosition = midpoint
             touchLastPosition = midpoint
+            touchStartTime = DispatchTime.now().uptimeNanoseconds
+            touchLastMoveTime = touchStartTime
+            lastScrollDeltaX = 0
+            lastScrollDeltaY = 0
 
         case 1: // Move
+            let now = DispatchTime.now().uptimeNanoseconds
             let distanceChange = abs(distance - initialPinchDistance)
-            let midDelta = hypot(midpoint.x - touchLastPosition.x, midpoint.y - touchLastPosition.y)
+            let midDelta = hypot(midpoint.x - touchStartPosition.x, midpoint.y - touchStartPosition.y)
 
             // Determine mode if not yet decided
             if gestureState != .twoFingerScroll && gestureState != .pinching {
@@ -1515,6 +1521,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 let dx = (midpoint.x - touchLastPosition.x) * GestureThresholds.scrollSensitivity
                 let dy = (midpoint.y - touchLastPosition.y) * GestureThresholds.scrollSensitivity
                 injectScrollEvent(deltaX: dx, deltaY: dy, at: midpoint)
+                let timeDelta = now - touchLastMoveTime
+                if timeDelta > 0 && timeDelta < 100_000_000 {
+                    lastScrollDeltaX = dx
+                    lastScrollDeltaY = dy
+                }
 
             case .pinching:
                 let scaleDelta = distance - lastPinchDistance
@@ -1530,8 +1541,28 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
 
             touchLastPosition = midpoint
+            touchLastMoveTime = now
 
         case 2: // Up
+            let now = DispatchTime.now().uptimeNanoseconds
+            let elapsed = now - touchStartTime
+            let totalMove = hypot(midpoint.x - touchStartPosition.x, midpoint.y - touchStartPosition.y)
+            if gestureState == .idle && totalMove < GestureThresholds.tapMaxDistance && elapsed < GestureThresholds.tapMaxTime {
+                // Apple-style 2-finger tap → Right Click
+                performRightClick(at: midpoint)
+            } else if gestureState == .twoFingerScroll {
+                let timeSinceLastMove = now - touchLastMoveTime
+                if timeSinceLastMove < 50_000_000 {
+                    let threshold: CGFloat = 2.0
+                    if abs(lastScrollDeltaX) > threshold || abs(lastScrollDeltaY) > threshold {
+                        startMomentumScroll(
+                            velocityX: lastScrollDeltaX * 6.0,
+                            velocityY: lastScrollDeltaY * 6.0,
+                            at: midpoint
+                        )
+                    }
+                }
+            }
             gestureState = .idle
             // Reset 1-finger tracking so leftover moves don't trigger scroll
             touchStartPosition = .zero
