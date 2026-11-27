@@ -17,6 +17,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+<a id="1.2.17"></a>
+## [1.2.17] - 2026-11-27 — Sidebar Settings Redesign, Teal-Green Theme & GitHub Releases Updater
+
+### Added
+- **Redesigned macOS Settings Window (Sidebar Layout + Emerald-Teal Accent):**
+  - Replaced the narrow 4-tab layout with a spacious native macOS sidebar window (`780×640`) accented in SideKick's signature logo wave teal-green (`#0FA982`).
+  - Added dedicated **Overview** (live Status card + Quick Controls for Touch, Keyboard/Touch ID, Rotation, and Disconnect Tablet) and **About & Updates** tabs, plus persistent sidebar footer controls (`Port/FPS`, `Takeover ⌘⇧T`, `Start/Stop`, `Restart`, `Quit`).
+- **In-App GitHub Releases Updater (macOS & Android):**
+  - Replaced Sparkle on macOS and the disabled Play Store stub on Android with a lightweight, zero-infrastructure GitHub Releases API updater (`kleinski/SideKick/releases/latest`).
+  - On macOS: inline update card in *About & Updates* + menu bar **Check for Updates…**, automatic Homebrew Cask detection (`Copy brew upgrade`), direct DMG download, and optional daily auto-check.
+  - On Android: **Check Updates** button right inside *Overlay & Display Settings* with direct APK download from GitHub Releases.
+- **Custom README Graphics:** Replaced upstream SideScreen photos with custom SideKick SVG hero banner and UI showcase graphics.
+
+### Removed
+- **Removed `Sparkle.framework` Dependency:** Dropped Sparkle from `MacHost/Package.swift` and `scripts/build_mac.sh` for a leaner universal macOS bundle and DMG.
+
+---
+
 <a id="1.2.16"></a>
 ## [1.2.16] - 2026-11-27 — Stream Heartbeat Watchdog, Dynamic Wake Lock & Concept D Mini-Pill Overlay
 

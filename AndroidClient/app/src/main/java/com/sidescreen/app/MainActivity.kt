@@ -825,6 +825,7 @@ class MainActivity : AppCompatActivity() {
         val resetOverlayPositionsBtn = view.findViewById<View>(R.id.resetOverlayPositionsBtn)
         val dialogAutoConnectSwitch = view.findViewById<SwitchMaterial>(R.id.dialogAutoConnectSwitch)
         val settingsVersionText = view.findViewById<TextView>(R.id.settingsVersionText)
+        val checkUpdatesButton = view.findViewById<View>(R.id.checkUpdatesButton)
         val opacitySlider = view.findViewById<Slider>(R.id.opacitySlider)
         val opacityValue = view.findViewById<TextView>(R.id.opacityValue)
         val disconnectButton = view.findViewById<View>(R.id.disconnectSettingsButton)
@@ -863,6 +864,9 @@ class MainActivity : AppCompatActivity() {
 
         // Load current settings
         settingsVersionText?.text = "v${appVersionName()}"
+        checkUpdatesButton?.setOnClickListener {
+            appUpdater.checkForUpdate(interactive = true)
+        }
         showStatsSwitch.isChecked = prefs.showStatsOverlay
         hideSettingsSwitch.isChecked = prefs.hideSettingsButton
         dialogAutoConnectSwitch?.isChecked = prefs.autoConnectEnabled

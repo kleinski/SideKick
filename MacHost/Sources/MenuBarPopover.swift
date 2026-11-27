@@ -232,6 +232,7 @@ struct MenuBarPopoverView: View {
         }
         .padding(14)
         .frame(width: 290)
+        .tint(SideKickTheme.accent)
     }
 
     private var header: some View {

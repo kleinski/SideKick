@@ -71,22 +71,35 @@ struct VisualEffectBlur: NSViewRepresentable {
 
 // MARK: - Settings Tabs
 
+enum SideKickTheme {
+    /// Signature emerald-teal green sampled from the glowing wave in the SideKick logo (#0FA982).
+    static let accent = Color(red: 0.059, green: 0.663, blue: 0.510)
+    static let accentBright = Color(red: 0.000, green: 0.784, blue: 0.588)
+}
+
 enum SettingsTab: String, CaseIterable, Identifiable {
+    case overview = "Overview"
     case connection = "Connection"
-    case display = "Display & Touch"
+    case display = "Display & Input"
     case stream = "Stream & Quality"
-    case system = "System & Status"
+    case system = "System"
+    case about = "About & Updates"
 
     var id: String { rawValue }
 
     var icon: String {
         switch self {
+        case .overview: return "house.fill"
         case .connection: return "wifi"
         case .display: return "display"
         case .stream: return "bolt.fill"
         case .system: return "gearshape.fill"
+        case .about: return "info.circle.fill"
         }
     }
+
+    static var primaryTabs: [SettingsTab] { [.overview, .connection, .display, .stream] }
+    static var secondaryTabs: [SettingsTab] { [.system, .about] }
 }
 
 // MARK: - Settings View
@@ -94,7 +107,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
 struct SettingsView: View {
     @ObservedObject var settings: DisplaySettings
     @ObservedObject var updater = AppUpdater.shared
-    @State private var selectedTab: SettingsTab = .connection
+    @State private var selectedTab: SettingsTab = .overview
     @State private var showPermissionAlert = false
     @State private var showResetConfirmation = false
     @State private var showAbout = false
@@ -102,6 +115,7 @@ struct SettingsView: View {
     @State private var headerHovered = false
     @State private var vorssaintRegisteredFeedback = false
     @State private var tccResetFeedback = false
+    @State private var copiedBrewFeedback = false
     // Plain strings for the custom resolution fields: TextField(value:format:)
     // only commits on Return/focus-loss, so clicking Apply read stale values,
     // and .number formatting injected locale grouping separators ("1,200").
@@ -120,165 +134,133 @@ struct SettingsView: View {
         !settings.hasScreenRecordingPermission || !settings.displaysHaveSeparateSpaces
     }
 
+    private var hasUpdateAvailable: Bool {
+        if case .updateAvailable = updater.state { return true }
+        return false
+    }
+
     var body: some View {
         ZStack {
             VisualEffectBlur(material: .sidebar, blendingMode: .behindWindow)
                 .ignoresSafeArea()
 
-            VStack(spacing: 0) {
-                // Header with frosted glass
-                HStack(spacing: 14) {
-                    // Logo: clicking it opens About, same as the ⓘ button.
-                    Button(action: { showAboutFromLogo.toggle() }) {
-                        Image(nsImage: NSApp.applicationIconImage)
-                            .resizable()
-                            .interpolation(.high)
-                            .frame(width: 56, height: 56)
-                            .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
-                            .shadow(color: Color.black.opacity(0.25), radius: 8, y: 4)
-                            .scaleEffect(headerHovered ? 1.05 : 1)
-                    }
-                    .buttonStyle(.plain)
-                    .help("About SideKick")
-                    .animation(.spring(response: 0.3), value: headerHovered)
-                    .onHover { headerHovered = $0 }
-                    .popover(isPresented: $showAboutFromLogo, arrowEdge: .bottom) {
-                        AboutPopover(updater: updater)
-                    }
-
-                    VStack(alignment: .leading, spacing: 3) {
-                        HStack(alignment: .firstTextBaseline, spacing: 8) {
-                            Text("SideKick")
-                                .font(.system(size: 20, weight: .bold, design: .rounded))
-                            Text("v\(AppInfo.version)")
-                                .font(.system(size: 11, weight: .semibold, design: .rounded))
-                                .foregroundColor(.secondary)
-                                .padding(.horizontal, 7)
-                                .padding(.vertical, 2)
-                                .background { Capsule().fill(.ultraThinMaterial) }
-                        }
-                        Text("Turn your tablet into a second display")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.secondary)
-                    }
-
-                    Spacer()
-
-                    Button(action: { showAbout.toggle() }) {
-                        Image(systemName: "info")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(.secondary)
-                            .frame(width: 28, height: 28)
-                            .background {
-                                Circle().fill(.ultraThinMaterial)
-                            }
-                    }
-                    .buttonStyle(.plain)
-                    .help("About SideKick")
-                    .accessibilityLabel("About SideKick")
-                    .popover(isPresented: $showAbout, arrowEdge: .bottom) {
-                        AboutPopover(updater: updater)
-                    }
-
-                    Button(action: { showResetConfirmation = true }) {
-                        Image(systemName: "arrow.counterclockwise")
-                            .font(.system(size: 12))
-                            .foregroundColor(.secondary)
-                            .frame(width: 28, height: 28)
-                            .background {
-                                Circle().fill(.ultraThinMaterial)
-                            }
-                    }
-                    .buttonStyle(.plain)
-                    .help("Reset settings")
-                    .alert("Reset Settings", isPresented: $showResetConfirmation) {
-                        Button("Cancel", role: .cancel) { }
-                        Button("Reset", role: .destructive) {
-                            settings.resetToDefaults()
-                            if let window = NSApp.windows.first(where: { $0.title == "SideKick" }) {
-                                window.center()
-                            }
-                        }
-                    } message: {
-                        Text("This will reset all settings to default values.")
-                    }
-                }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 16)
-                .background(.ultraThinMaterial)
-
-                Rectangle()
-                    .fill(Color.primary.opacity(0.06))
-                    .frame(height: 1)
-
-                // 4-Tab Navigation Bar — pinned below Header
-                HStack(spacing: 4) {
-                    ForEach(SettingsTab.allCases) { tab in
-                        let isSelected = selectedTab == tab
-                        Button(action: {
-                            withAnimation(.easeInOut(duration: 0.15)) {
-                                selectedTab = tab
-                            }
-                        }) {
-                            HStack(spacing: 5) {
-                                Image(systemName: tab.icon)
-                                    .font(.system(size: 11, weight: .semibold))
-                                Text(tab.rawValue)
-                                    .font(.system(size: 11, weight: isSelected ? .semibold : .medium))
-                                    .lineLimit(1)
-                                if tab == .system && hasSystemAttentionWarning {
-                                    Circle()
-                                        .fill(Color.orange)
-                                        .frame(width: 6, height: 6)
+            HStack(spacing: 0) {
+                // MARK: Left Sidebar (Proposal 1 + Teal-Green Accent)
+                VStack(alignment: .leading, spacing: 0) {
+                    // Brand Header
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack(spacing: 11) {
+                            Image(nsImage: NSApp.applicationIconImage)
+                                .resizable()
+                                .interpolation(.high)
+                                .frame(width: 44, height: 44)
+                                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                                .shadow(color: Color.black.opacity(0.22), radius: 6, y: 3)
+                                .scaleEffect(headerHovered ? 1.04 : 1)
+                                .animation(.spring(response: 0.25), value: headerHovered)
+                                .onHover { headerHovered = $0 }
+                                .onTapGesture {
+                                    withAnimation(.easeInOut(duration: 0.15)) {
+                                        selectedTab = .about
+                                    }
                                 }
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("SideKick")
+                                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                                Text("v\(AppInfo.version)")
+                                    .font(.system(size: 11, weight: .medium, design: .monospaced))
+                                    .foregroundColor(.secondary)
                             }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 7)
-                            .padding(.horizontal, 4)
-                            .background(
-                                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                    .fill(isSelected ? Color.accentColor : Color.clear)
-                            )
-                            .foregroundColor(isSelected ? .white : .primary)
-                            .contentShape(Rectangle())
                         }
-                        .buttonStyle(.plain)
+
+                        Text("Turn your tablet into a second display")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
-                }
-                .padding(4)
-                .background(.ultraThinMaterial)
-                .cornerRadius(8)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(.ultraThinMaterial)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 18)
+                    .padding(.bottom, 14)
 
-                Rectangle()
-                    .fill(Color.primary.opacity(0.06))
-                    .frame(height: 1)
-
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 16) {
-                        switch selectedTab {
-                        case .connection:
-                            connectionTabContent
-                        case .display:
-                            displayTabContent
-                        case .stream:
-                            streamTabContent
-                        case .system:
-                            systemTabContent
-                        }
-                    }
-                    .padding(20)
-                }
-
-                // Footer
-                VStack(spacing: 0) {
                     Rectangle()
                         .fill(Color.primary.opacity(0.06))
                         .frame(height: 1)
+                        .padding(.horizontal, 12)
 
-                    HStack(spacing: 12) {
+                    // Navigation List
+                    VStack(spacing: 3) {
+                        ForEach(SettingsTab.primaryTabs) { tab in
+                            sidebarRow(for: tab)
+                        }
+
+                        Rectangle()
+                            .fill(Color.primary.opacity(0.06))
+                            .frame(height: 1)
+                            .padding(.vertical, 8)
+                            .padding(.horizontal, 6)
+
+                        ForEach(SettingsTab.secondaryTabs) { tab in
+                            sidebarRow(for: tab)
+                        }
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.top, 12)
+
+                    Spacer()
+
+                    // Sidebar Footer: Live Status + Takeover + Start/Stop + Restart/Quit
+                    VStack(spacing: 8) {
+                        Rectangle()
+                            .fill(Color.primary.opacity(0.06))
+                            .frame(height: 1)
+
+                        HStack(spacing: 6) {
+                            Circle()
+                                .fill(settings.isRunning ? SideKickTheme.accent : Color.secondary.opacity(0.45))
+                                .frame(width: 8, height: 8)
+                            Text(
+                                settings.isRunning
+                                    ? (settings.clientConnected ? "Streaming · \(Int(settings.currentFPS)) FPS" : "Port \(settings.port)")
+                                    : "Server stopped"
+                            )
+                            .font(.system(size: 11, weight: .medium))
+                            .lineLimit(1)
+                            Spacer()
+                            if settings.connectionMode == .wireless && settings.wirelessEncryption {
+                                Image(systemName: "lock.fill")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(SideKickTheme.accent)
+                            }
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background {
+                            Capsule().fill(.ultraThinMaterial)
+                                .overlay {
+                                    Capsule().strokeBorder(
+                                        (settings.isRunning ? SideKickTheme.accent : Color.primary).opacity(0.18),
+                                        lineWidth: 1
+                                    )
+                                }
+                        }
+
+                        Button(action: {
+                            settings.requestTakeover()
+                        }) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "ipad.and.arrow.forward")
+                                    .font(.system(size: 11, weight: .semibold))
+                                Text("Takeover (⌘⇧T)")
+                                    .font(.system(size: 12, weight: .medium))
+                            }
+                            .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.regular)
+                        .disabled(!settings.hasScreenRecordingPermission)
+                        .help("Pull your paired tablet to this Mac (⌘⇧T)")
+
                         Button(action: {
                             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                 settings.toggleServer()
@@ -286,102 +268,488 @@ struct SettingsView: View {
                         }) {
                             HStack(spacing: 6) {
                                 Image(systemName: settings.isRunning ? "stop.fill" : "play.fill")
-                                    .font(.system(size: 12))
+                                    .font(.system(size: 11))
                                 Text(settings.isRunning ? "Stop" : "Start")
-                                    .font(.system(size: 13, weight: .medium))
+                                    .font(.system(size: 12, weight: .semibold))
                             }
-                            .frame(width: 90)
+                            .frame(maxWidth: .infinity)
                         }
                         .buttonStyle(.borderedProminent)
-                        .tint(settings.isRunning ? .red : .accentColor)
-                        .controlSize(.large)
+                        .tint(settings.isRunning ? .red : SideKickTheme.accent)
+                        .controlSize(.regular)
                         .disabled(!settings.hasScreenRecordingPermission)
 
-                        Button(action: {
-                            settings.requestTakeover()
-                        }) {
-                            HStack(spacing: 6) {
-                                Image(systemName: "ipad.and.arrow.forward")
-                                    .font(.system(size: 12))
-                                Text("Takeover")
-                                    .font(.system(size: 13, weight: .medium))
+                        HStack(spacing: 8) {
+                            Button(action: { restartApp() }) {
+                                Label("Restart", systemImage: "arrow.clockwise")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
                             }
-                            .padding(.horizontal, 6)
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.large)
-                        .disabled(!settings.hasScreenRecordingPermission)
-                        .help("Pull your paired tablet to this Mac (⌘⇧T)")
+                            .buttonStyle(.plain)
+                            .help("Restart SideKick")
 
-                        if settings.isRunning {
-                            HStack(spacing: 6) {
-                                Circle()
-                                    .fill(Color.green)
-                                    .frame(width: 8, height: 8)
-                                    .overlay {
-                                        Circle()
-                                            .stroke(Color.green.opacity(0.3), lineWidth: 2)
-                                            .scaleEffect(1.5)
-                                    }
-                                Text("Running on port \(settings.port)")
-                                    .font(.system(size: 12))
-                            }
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background {
-                                Capsule().fill(.ultraThinMaterial)
-                                    .overlay {
-                                        Capsule().strokeBorder(Color.green.opacity(0.2), lineWidth: 1)
-                                    }
-                            }
-                            .transition(.scale.combined(with: .opacity))
-                        }
+                            Spacer()
 
+                            Button(action: {
+                                (NSApp.delegate as? AppDelegate)?.requestQuit(nil)
+                            }) {
+                                Label("Quit", systemImage: "power")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                            .help("Quit SideKick (⌘Q)")
+                        }
+                        .padding(.horizontal, 4)
+                        .padding(.top, 2)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 14)
+                }
+                .frame(width: 220)
+                .background(.ultraThinMaterial)
+
+                Rectangle()
+                    .fill(Color.primary.opacity(0.08))
+                    .frame(width: 1)
+
+                // MARK: Right Content Pane
+                VStack(spacing: 0) {
+                    // Section Header
+                    HStack(spacing: 10) {
+                        Image(systemName: selectedTab.icon)
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(SideKickTheme.accent)
+                        Text(selectedTab.rawValue)
+                            .font(.system(size: 20, weight: .bold, design: .rounded))
                         Spacer()
 
-                        // Restart button
-                        Button(action: {
-                            restartApp()
-                        }) {
-                            Image(systemName: "arrow.clockwise")
-                                .font(.system(size: 12, weight: .medium))
+                        Button(action: { showResetConfirmation = true }) {
+                            Image(systemName: "arrow.counterclockwise")
+                                .font(.system(size: 12))
                                 .foregroundColor(.secondary)
-                                .frame(width: 32, height: 32)
+                                .frame(width: 28, height: 28)
                                 .background {
                                     Circle().fill(.ultraThinMaterial)
-                                        .overlay {
-                                            Circle().strokeBorder(Color.primary.opacity(0.1), lineWidth: 1)
-                                        }
                                 }
                         }
                         .buttonStyle(.plain)
-                        .help("Restart App")
-
-                        // Quit button
-                        Button(action: {
-                            (NSApp.delegate as? AppDelegate)?.requestQuit(nil)
-                        }) {
-                            Image(systemName: "power")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(.secondary)
-                                .frame(width: 32, height: 32)
-                                .background {
-                                    Circle().fill(.ultraThinMaterial)
-                                        .overlay {
-                                            Circle().strokeBorder(Color.primary.opacity(0.1), lineWidth: 1)
-                                        }
+                        .help("Reset settings to defaults")
+                        .alert("Reset Settings", isPresented: $showResetConfirmation) {
+                            Button("Cancel", role: .cancel) { }
+                            Button("Reset", role: .destructive) {
+                                settings.resetToDefaults()
+                                if let window = NSApp.windows.first(where: { $0.title == "SideKick" }) {
+                                    window.center()
                                 }
+                            }
+                        } message: {
+                            Text("This will reset all settings to default values.")
                         }
-                        .buttonStyle(.plain)
-                        .help("Quit SideKick (⌘Q)")
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 14)
-                    .background(.ultraThinMaterial)
+                    .padding(.horizontal, 24)
+                    .padding(.top, 18)
+                    .padding(.bottom, 12)
+
+                    Rectangle()
+                        .fill(Color.primary.opacity(0.06))
+                        .frame(height: 1)
+
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 16) {
+                            switch selectedTab {
+                            case .overview:
+                                overviewTabContent
+                            case .connection:
+                                connectionTabContent
+                            case .display:
+                                displayTabContent
+                            case .stream:
+                                streamTabContent
+                            case .system:
+                                systemTabContent
+                            case .about:
+                                aboutTabContent
+                            }
+                        }
+                        .padding(22)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        .tint(SideKickTheme.accent)
+        .frame(width: 780, height: 640)
+    }
+
+    @ViewBuilder
+    private func sidebarRow(for tab: SettingsTab) -> some View {
+        let isSelected = selectedTab == tab
+        Button(action: {
+            withAnimation(.easeInOut(duration: 0.15)) {
+                selectedTab = tab
+            }
+        }) {
+            HStack(spacing: 10) {
+                Image(systemName: tab.icon)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(isSelected ? .white : SideKickTheme.accent)
+                    .frame(width: 18)
+
+                Text(tab.rawValue)
+                    .font(.system(size: 13, weight: isSelected ? .semibold : .medium))
+                    .foregroundColor(isSelected ? .white : .primary)
+                    .lineLimit(1)
+
+                Spacer()
+
+                if tab == .system && hasSystemAttentionWarning {
+                    Circle()
+                        .fill(Color.orange)
+                        .frame(width: 7, height: 7)
+                } else if tab == .about && hasUpdateAvailable {
+                    Circle()
+                        .fill(isSelected ? Color.white : SideKickTheme.accentBright)
+                        .frame(width: 7, height: 7)
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(isSelected ? SideKickTheme.accent : Color.clear)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Tab 0: Overview (Proposal 1)
+
+    @ViewBuilder
+    private var overviewTabContent: some View {
+        if !settings.hasScreenRecordingPermission {
+            screenRecordingWarningBanner
+        }
+
+        FrostedGroupBox(title: "Status", icon: "checkmark.circle") {
+            VStack(spacing: 10) {
+                overviewStatusRow(
+                    label: "Virtual Display",
+                    value: settings.displayCreated ? "Active" : "On-Demand (Standby)",
+                    color: settings.displayCreated ? SideKickTheme.accent : .secondary
+                )
+                overviewStatusRow(
+                    label: "Connected Tablet",
+                    value: settings.clientConnected
+                        ? (settings.currentWirelessDevice ?? (settings.connectionMode == .usb ? "USB Tablet" : "Connected"))
+                        : "None",
+                    color: settings.clientConnected ? SideKickTheme.accent : .secondary
+                )
+                overviewStatusRow(
+                    label: "Wireless Security",
+                    value: settings.connectionMode == .usb
+                        ? "Direct USB"
+                        : (settings.wirelessEncryption ? "AES-256-GCM" : "Unencrypted"),
+                    color: settings.connectionMode == .usb
+                        ? .cyan
+                        : (settings.wirelessEncryption ? SideKickTheme.accent : .orange)
+                )
+                overviewStatusRow(
+                    label: "Screen Recording",
+                    value: settings.hasScreenRecordingPermission ? "Granted" : "Required",
+                    color: settings.hasScreenRecordingPermission ? SideKickTheme.accent : .red
+                )
+                overviewStatusRow(
+                    label: "Accessibility (Touch & Keys)",
+                    value: settings.hasAccessibilityPermission ? "Granted" : "Optional",
+                    color: settings.hasAccessibilityPermission ? SideKickTheme.accent : .orange
+                )
+                overviewStatusRow(
+                    label: "Capture Method",
+                    value: settings.captureMethod.isEmpty ? "ScreenCaptureKit" : settings.captureMethod,
+                    color: SideKickTheme.accent
+                )
+
+                Divider().padding(.vertical, 2)
+
+                overviewStatusRow(
+                    label: "Connection Mode",
+                    value: settings.connectionMode == .wireless ? "Wi-Fi (Bonjour)" : "USB-C Cable",
+                    color: SideKickTheme.accent
+                )
+                overviewStatusRow(
+                    label: "Listening Port",
+                    value: settings.isRunning ? "Port \(settings.port)" : "Stopped",
+                    color: settings.isRunning ? SideKickTheme.accent : .secondary
+                )
+            }
+        }
+
+        FrostedGroupBox(title: "Quick Controls", icon: "slider.horizontal.3") {
+            VStack(alignment: .leading, spacing: 12) {
+                Toggle(isOn: $settings.touchEnabled) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Touch Control")
+                            .font(.system(size: 13, weight: .medium))
+                        Text("Allow touch and drag gestures from the tablet")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .toggleStyle(.switch)
+
+                Divider()
+
+                Toggle(isOn: settings.keyboardAuthBinding) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Keyboard Control")
+                            .font(.system(size: 13, weight: .medium))
+                        Text(settings.keyboardEnabled ? "Forward tablet keyboard & shortcuts" : "Locked (Touch ID / password to enable)")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .toggleStyle(.switch)
+
+                Divider()
+
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Display Rotation")
+                            .font(.system(size: 13, weight: .medium))
+                        Text("Applies live to the connected tablet")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer()
+                    Picker("", selection: $settings.rotation) {
+                        Text("0°").tag(0)
+                        Text("90°").tag(90)
+                        Text("180°").tag(180)
+                        Text("270°").tag(270)
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .frame(width: 196)
+                }
+
+                if settings.clientConnected {
+                    Divider()
+                    Button(action: { settings.onDisconnectTablet?() }) {
+                        Label("Disconnect Tablet (⌘⇧D)", systemImage: "eject.fill")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
                 }
             }
         }
-        .frame(width: 480, height: 780)
+    }
+
+    @ViewBuilder
+    private func overviewStatusRow(label: String, value: String, color: Color) -> some View {
+        HStack {
+            Text(label)
+                .font(.system(size: 12.5))
+                .foregroundColor(.primary)
+            Spacer()
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(color)
+                    .frame(width: 7, height: 7)
+                Text(value)
+                    .font(.system(size: 12.5, weight: .medium))
+                    .foregroundColor(color == .secondary ? .secondary : color)
+            }
+        }
+    }
+
+    // MARK: - Tab 5: About & Updates (Proposal 3 + Option A GitHub API)
+
+    @ViewBuilder
+    private var aboutTabContent: some View {
+        FrostedGroupBox(title: "SideKick", icon: "sparkles") {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(spacing: 14) {
+                    Image(nsImage: NSApp.applicationIconImage)
+                        .resizable()
+                        .interpolation(.high)
+                        .frame(width: 56, height: 56)
+                        .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+                        .shadow(color: Color.black.opacity(0.2), radius: 6, y: 3)
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("SideKick")
+                            .font(.system(size: 18, weight: .bold, design: .rounded))
+                        Text("Version \(AppInfo.version) · Universal (Apple Silicon + Intel)")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                        Text("Multi-Mac wireless & USB-C second display fork")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                    }
+
+                    Spacer()
+
+                    Button(action: { updater.checkForUpdatesInline() }) {
+                        if case .checking = updater.state {
+                            ProgressView()
+                                .controlSize(.small)
+                                .padding(.horizontal, 12)
+                        } else {
+                            Text("Check for Updates…")
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(SideKickTheme.accent)
+                    .disabled(!updater.canCheckForUpdates)
+                }
+
+                Divider()
+
+                Toggle(isOn: $updater.autoCheckEnabled) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Automatically check for updates")
+                            .font(.system(size: 12.5, weight: .medium))
+                        Text("Checks GitHub Releases (kleinski/SideKick) once per day")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .toggleStyle(.switch)
+            }
+        }
+
+        // Inline Update Result Card
+        switch updater.state {
+        case .idle:
+            EmptyView()
+        case .checking:
+            FrostedGroupBox(title: "Checking for Updates", icon: "arrow.triangle.2.circlepath") {
+                HStack(spacing: 10) {
+                    ProgressView().controlSize(.small)
+                    Text("Contacting GitHub Releases…")
+                        .font(.system(size: 12.5))
+                        .foregroundColor(.secondary)
+                    Spacer()
+                }
+            }
+        case .upToDate(let latest):
+            FrostedGroupBox(title: "You're up to date!", icon: "checkmark.seal.fill") {
+                HStack(spacing: 10) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 20))
+                        .foregroundColor(SideKickTheme.accent)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("SideKick \(AppInfo.version) is currently the newest version available.")
+                            .font(.system(size: 12.5, weight: .medium))
+                        Text("Latest GitHub release: v\(latest)")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer()
+                }
+            }
+        case .updateAvailable(let info):
+            FrostedGroupBox(title: "Update Available — v\(info.version)", icon: "arrow.down.circle.fill") {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(info.title)
+                        .font(.system(size: 13, weight: .semibold))
+                    Text(info.notes)
+                        .font(.system(size: 11.5))
+                        .foregroundColor(.secondary)
+                        .lineLimit(6)
+
+                    if updater.isInstalledViaHomebrew {
+                        HStack(spacing: 8) {
+                            Text("brew upgrade --cask kleinski/sidekick/sidekick")
+                                .font(.system(size: 11, design: .monospaced))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 5)
+                                .background(RoundedRectangle(cornerRadius: 6).fill(Color.primary.opacity(0.06)))
+                            Button(copiedBrewFeedback ? "Copied!" : "Copy") {
+                                updater.copyBrewUpgradeCommand()
+                                copiedBrewFeedback = true
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                                    copiedBrewFeedback = false
+                                }
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(SideKickTheme.accent)
+                            .controlSize(.small)
+                        }
+                    }
+
+                    HStack(spacing: 8) {
+                        Button("Download DMG") {
+                            NSWorkspace.shared.open(info.dmgURL ?? info.releaseURL)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(SideKickTheme.accent)
+
+                        Button("View Release Notes") {
+                            NSWorkspace.shared.open(info.releaseURL)
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                }
+            }
+        case .failed(let message):
+            FrostedGroupBox(title: "Update Check Failed", icon: "exclamationmark.triangle.fill") {
+                HStack {
+                    Text(message)
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Button("Retry") { updater.checkForUpdatesInline() }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                }
+            }
+        }
+
+        FrostedGroupBox(title: "Links & Attribution", icon: "link") {
+            VStack(alignment: .leading, spacing: 10) {
+                aboutLinkRow("GitHub Repository (kleinski/SideKick)", url: AppInfo.github)
+                Divider()
+                aboutLinkRow("Changelog", url: AppInfo.changelog)
+                Divider()
+                aboutLinkRow("Report a Problem", url: AppInfo.reportProblem)
+                Divider()
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Based on SideScreen by Tran Vuong Quoc Dat (MIT License)")
+                        .font(.system(size: 12, weight: .semibold))
+                    Text("Huge thanks to Tran Vuong Quoc Dat for the original open-source streaming engine. Need up to 3 simultaneous tablets or Mac audio on your tablet?")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                    HStack(spacing: 12) {
+                        Link("SideScreen Pro ↗", destination: AppInfo.upstreamPro)
+                            .font(.system(size: 11.5, weight: .semibold))
+                            .foregroundColor(SideKickTheme.accent)
+                        Link("SideScreen GitHub ↗", destination: AppInfo.upstreamGithub)
+                            .font(.system(size: 11.5))
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func aboutLinkRow(_ title: String, url: URL) -> some View {
+        Button(action: { NSWorkspace.shared.open(url) }) {
+            HStack {
+                Text(title)
+                    .font(.system(size: 12.5))
+                    .foregroundColor(.primary)
+                Spacer()
+                Image(systemName: "arrow.up.right")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.secondary)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Tab 1: Connection
@@ -1930,7 +2298,7 @@ class DisplaySettings: ObservableObject {
 class SettingsWindowController: NSWindowController, NSWindowDelegate {
     convenience init(settings: DisplaySettings) {
         let window = ConstrainedWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 480, height: 780),
+            contentRect: NSRect(x: 0, y: 0, width: 780, height: 640),
             styleMask: [.titled, .closable, .miniaturizable],
             backing: .buffered,
             defer: false

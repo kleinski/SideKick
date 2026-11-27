@@ -47,10 +47,6 @@ mkdir -p "$APP_DIR/Contents/Resources"
 cp .build/release-universal/SideScreen "$APP_DIR/Contents/MacOS/SideKick"
 ln -sf SideKick "$APP_DIR/Contents/MacOS/SideScreen"
 
-# Sparkle (auto-update) ships as a framework next to the binary
-mkdir -p "$APP_DIR/Contents/Frameworks"
-cp -R "$BIN_DIR/Sparkle.framework" "$APP_DIR/Contents/Frameworks/"
-
 # No LaunchAgent plist needed for SMAppService.mainApp
 
 # Copy app icon if exists

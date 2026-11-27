@@ -82,7 +82,33 @@ While the original [**SideScreen**](https://github.com/tranvuongquocdat/SideScre
 ---
 
 <div align="center">
-  <img src="resources/screenshots/hero_screenshot.jpeg" alt="SideKick — Mac + Android tablet as second display" width="800"/>
+  <img src="resources/screenshots/hero_sidekick.svg" alt="SideKick — One Android tablet across multiple MacBooks" width="840"/>
+</div>
+
+---
+
+## Visual Overview
+
+<div align="center">
+  <img src="resources/screenshots/mac_settings_sidebar.jpg" alt="SideKick macOS Sidebar Settings" width="760"/>
+  <br/>
+  <em>macOS Settings with native sidebar navigation, Overview status card, quick controls, and built-in GitHub Releases update checker</em>
+</div>
+
+<br/>
+
+<div align="center">
+  <img src="resources/screenshots/android_overlay_pill.jpg" alt="SideKick Android Draggable Mini-Status-Pill and Popovers" width="760"/>
+  <br/>
+  <em>Android in-stream Mini-Status-Pill with floating Mac Actions / Zoom / Special Keys popovers and optional draggable SideKick trigger button</em>
+</div>
+
+<br/>
+
+<div align="center">
+  <img src="resources/screenshots/android_home_multimac.png" alt="SideKick Android Multi-Mac Home Screen" width="760"/>
+  <br/>
+  <em>Android Multi-Mac Home Screen with Bonjour online status, Auto-Connect toggle, and QR / pairing code setup</em>
 </div>
 
 ---
@@ -95,16 +121,8 @@ Two ways to connect, same picture quality. **USB-C** plugs in the cable for the 
 ### Virtual Display
 Creates a true hardware-backed virtual display on your Mac. Drag windows to your tablet like a real monitor — extending your desktop rather than mirroring.
 
-<div align="center">
-  <img src="resources/screenshots/feature_virtual_display.png" alt="Virtual Display in macOS Display Preferences" width="600"/>
-</div>
-
 ### Ultra-Low Latency
 Hardware-accelerated H.265 encoding on Mac and decoding on Android. Async pipeline architecture delivers frames in under 30ms.
-
-<div align="center">
-  <img src="resources/screenshots/android_performance.png" alt="Low Latency Streaming with Stats Overlay" width="700"/>
-</div>
 
 ### Touch Support
 Use your tablet's touchscreen to interact with macOS. Touch prediction compensates for network latency, making taps and drags feel natural.
@@ -164,7 +182,7 @@ Download the latest **SideKick** builds from [**GitHub Releases (`kleinski/SideK
 - **Android (`SideKick-<version>-android-release.apk`):**
   - Download and install the `.apk` directly on your Android tablet, or install via ADB:
     ```bash
-    adb install -r SideKick-1.2.16-android-release.apk
+    adb install -r SideKick-1.2.17-android-release.apk
     ```
   - Because SideKick uses the package ID `com.sidekick.app`, it can be installed alongside the original Google Play `SideScreen` app without conflict.
 
