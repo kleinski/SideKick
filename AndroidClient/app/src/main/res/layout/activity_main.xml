@@ -167,34 +167,23 @@
             android:orientation="horizontal"
             android:gravity="center_vertical">
 
-            <!-- 1. Mac Actions Popover Trigger (Apps / Mission / Desktop) -->
-            <LinearLayout
+            <!-- 1. Mac Actions Popover Trigger (Apple icon -> Apps / Mission / Desktop) -->
+            <FrameLayout
                 android:id="@+id/macActionsButton"
-                android:layout_width="wrap_content"
+                android:layout_width="34dp"
                 android:layout_height="30dp"
-                android:orientation="horizontal"
-                android:gravity="center"
-                android:paddingHorizontal="8dp"
                 android:layout_marginEnd="6dp"
                 android:background="@drawable/overlay_action_bg"
                 android:clickable="true"
                 android:focusable="true">
 
                 <ImageView
-                    android:layout_width="14dp"
-                    android:layout_height="14dp"
-                    android:layout_marginEnd="4dp"
-                    android:src="@drawable/ic_apps" />
-
-                <TextView
-                    android:id="@+id/macActionsLabel"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Mac ▾"
-                    android:textColor="#FFFFFF"
-                    android:textSize="11sp"
-                    android:textStyle="bold" />
-            </LinearLayout>
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_apple"
+                    android:contentDescription="Mac Actions" />
+            </FrameLayout>
 
             <!-- 2. Keyboard -->
             <FrameLayout
@@ -292,7 +281,7 @@
         </LinearLayout>
     </LinearLayout>
 
-    <!-- Popover 1: Mac System Actions (Apps | Mission Control | Desktop) -->
+    <!-- Popover 1: Mac System Actions (Squircle Tiles: Apps | Mission | Desktop) -->
     <LinearLayout
         android:id="@+id/macActionsPopover"
         android:layout_width="wrap_content"
@@ -301,91 +290,87 @@
         android:gravity="center_vertical"
         android:background="@drawable/overlay_pill_bg"
         android:elevation="14dp"
-        android:paddingHorizontal="10dp"
-        android:paddingVertical="8dp"
+        android:padding="8dp"
         android:visibility="gone"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent">
 
         <LinearLayout
             android:id="@+id/actionAppsButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="64dp"
+            android:layout_height="54dp"
             android:orientation="vertical"
             android:gravity="center"
-            android:layout_marginEnd="10dp"
+            android:layout_marginEnd="6dp"
+            android:background="@drawable/overlay_tile_bg"
             android:clickable="true"
             android:focusable="true">
 
             <ImageView
-                android:layout_width="34dp"
-                android:layout_height="34dp"
-                android:padding="7dp"
-                android:background="@drawable/overlay_action_bg"
+                android:layout_width="18dp"
+                android:layout_height="18dp"
                 android:src="@drawable/ic_apps" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
+                android:layout_marginTop="4dp"
                 android:text="Apps"
-                android:textColor="#CCFFFFFF"
-                android:textSize="9sp" />
+                android:textColor="#E2E8F0"
+                android:textSize="10sp" />
         </LinearLayout>
 
         <LinearLayout
             android:id="@+id/actionMissionControlButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="64dp"
+            android:layout_height="54dp"
             android:orientation="vertical"
             android:gravity="center"
-            android:layout_marginEnd="10dp"
+            android:layout_marginEnd="6dp"
+            android:background="@drawable/overlay_tile_bg"
             android:clickable="true"
             android:focusable="true">
 
             <ImageView
-                android:layout_width="34dp"
-                android:layout_height="34dp"
-                android:padding="7dp"
-                android:background="@drawable/overlay_action_bg"
+                android:layout_width="18dp"
+                android:layout_height="18dp"
                 android:src="@drawable/ic_mission_control" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
+                android:layout_marginTop="4dp"
                 android:text="Mission"
-                android:textColor="#CCFFFFFF"
-                android:textSize="9sp" />
+                android:textColor="#E2E8F0"
+                android:textSize="10sp" />
         </LinearLayout>
 
         <LinearLayout
             android:id="@+id/actionDesktopButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="64dp"
+            android:layout_height="54dp"
             android:orientation="vertical"
             android:gravity="center"
+            android:background="@drawable/overlay_tile_bg"
             android:clickable="true"
             android:focusable="true">
 
             <ImageView
-                android:layout_width="34dp"
-                android:layout_height="34dp"
-                android:padding="7dp"
-                android:background="@drawable/overlay_action_bg"
+                android:layout_width="18dp"
+                android:layout_height="18dp"
                 android:src="@drawable/ic_show_desktop" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
+                android:layout_marginTop="4dp"
                 android:text="Desktop"
-                android:textColor="#CCFFFFFF"
-                android:textSize="9sp" />
+                android:textColor="#E2E8F0"
+                android:textSize="10sp" />
         </LinearLayout>
     </LinearLayout>
 
-    <!-- Popover 2: Zoom Controls (- | 1:1 | + | Fit) -->
+    <!-- Popover 2: Zoom Controls (Squircle Tiles: - | 1:1 | + | Fit) -->
     <LinearLayout
         android:id="@+id/zoomPopover"
         android:layout_width="wrap_content"
@@ -394,121 +379,116 @@
         android:gravity="center_vertical"
         android:background="@drawable/overlay_pill_bg"
         android:elevation="14dp"
-        android:paddingHorizontal="10dp"
-        android:paddingVertical="8dp"
+        android:padding="8dp"
         android:visibility="gone"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent">
 
         <LinearLayout
             android:id="@+id/zoomOutButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="54dp"
+            android:layout_height="52dp"
             android:orientation="vertical"
             android:gravity="center"
-            android:layout_marginEnd="8dp"
+            android:layout_marginEnd="6dp"
+            android:background="@drawable/overlay_tile_bg"
             android:clickable="true"
             android:focusable="true">
 
             <ImageView
-                android:layout_width="34dp"
-                android:layout_height="34dp"
-                android:padding="7dp"
-                android:background="@drawable/overlay_action_bg"
+                android:layout_width="18dp"
+                android:layout_height="18dp"
                 android:src="@drawable/ic_zoom_out" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
+                android:layout_marginTop="3dp"
                 android:text="Zoom -"
-                android:textColor="#CCFFFFFF"
+                android:textColor="#E2E8F0"
                 android:textSize="9sp" />
         </LinearLayout>
 
         <LinearLayout
             android:id="@+id/zoomOneToOneButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="54dp"
+            android:layout_height="52dp"
             android:orientation="vertical"
             android:gravity="center"
-            android:layout_marginEnd="8dp"
+            android:layout_marginEnd="6dp"
+            android:background="@drawable/overlay_tile_bg"
             android:clickable="true"
             android:focusable="true">
 
             <TextView
-                android:layout_width="34dp"
-                android:layout_height="34dp"
-                android:gravity="center"
-                android:background="@drawable/overlay_action_bg"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
                 android:text="1:1"
-                android:textColor="#FFFFFF"
-                android:textSize="11sp"
+                android:textColor="#00C896"
+                android:textSize="12sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/zoomOneToOneLabel"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
+                android:layout_marginTop="3dp"
                 android:text="100%"
-                android:textColor="#CCFFFFFF"
+                android:textColor="#E2E8F0"
                 android:textSize="9sp" />
         </LinearLayout>
 
         <LinearLayout
             android:id="@+id/zoomInButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="54dp"
+            android:layout_height="52dp"
             android:orientation="vertical"
             android:gravity="center"
-            android:layout_marginEnd="8dp"
+            android:layout_marginEnd="6dp"
+            android:background="@drawable/overlay_tile_bg"
             android:clickable="true"
             android:focusable="true">
 
             <ImageView
-                android:layout_width="34dp"
-                android:layout_height="34dp"
-                android:padding="7dp"
-                android:background="@drawable/overlay_action_bg"
+                android:layout_width="18dp"
+                android:layout_height="18dp"
                 android:src="@drawable/ic_zoom_in" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
+                android:layout_marginTop="3dp"
                 android:text="Zoom +"
-                android:textColor="#CCFFFFFF"
+                android:textColor="#E2E8F0"
                 android:textSize="9sp" />
         </LinearLayout>
 
         <LinearLayout
             android:id="@+id/zoomFitButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="54dp"
+            android:layout_height="52dp"
             android:orientation="vertical"
             android:gravity="center"
+            android:background="@drawable/overlay_tile_bg"
             android:clickable="true"
             android:focusable="true">
 
             <ImageView
-                android:layout_width="34dp"
-                android:layout_height="34dp"
-                android:padding="7dp"
-                android:background="@drawable/overlay_action_bg"
+                android:layout_width="18dp"
+                android:layout_height="18dp"
                 android:src="@drawable/ic_zoom_fit" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
+                android:layout_marginTop="3dp"
                 android:text="Fit"
-                android:textColor="#CCFFFFFF"
+                android:textColor="#E2E8F0"
                 android:textSize="9sp" />
         </LinearLayout>
     </LinearLayout>
 
-    <!-- Popover 3: More Menu (Switch Mac / Settings / Hide Overlay) -->
+    <!-- Popover 3: Native macOS-Style More Menu (Flat rows + subtle dividers) -->
     <LinearLayout
         android:id="@+id/moreMenuPopover"
         android:layout_width="wrap_content"
@@ -516,20 +496,19 @@
         android:orientation="vertical"
         android:background="@drawable/overlay_pill_bg"
         android:elevation="14dp"
-        android:padding="8dp"
+        android:padding="6dp"
         android:visibility="gone"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent">
 
         <LinearLayout
             android:id="@+id/switchMacButton"
-            android:layout_width="148dp"
-            android:layout_height="36dp"
+            android:layout_width="176dp"
+            android:layout_height="38dp"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:paddingHorizontal="10dp"
-            android:layout_marginBottom="4dp"
-            android:background="@drawable/overlay_action_bg"
+            android:paddingHorizontal="12dp"
+            android:background="@drawable/overlay_menu_item_bg"
             android:clickable="true"
             android:focusable="true"
             android:visibility="gone">
@@ -537,66 +516,81 @@
             <ImageView
                 android:layout_width="16dp"
                 android:layout_height="16dp"
-                android:layout_marginEnd="8dp"
+                android:layout_marginEnd="10dp"
                 android:src="@drawable/ic_switch_mac" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Switch Mac"
-                android:textColor="#FFFFFF"
-                android:textSize="12sp" />
+                android:textColor="#F8FAFC"
+                android:textSize="13sp" />
         </LinearLayout>
+
+        <View
+            android:id="@+id/switchMacDivider"
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginHorizontal="10dp"
+            android:layout_marginVertical="2dp"
+            android:background="#1AFFFFFF"
+            android:visibility="gone" />
 
         <LinearLayout
             android:id="@+id/settingsButton"
-            android:layout_width="148dp"
-            android:layout_height="36dp"
+            android:layout_width="176dp"
+            android:layout_height="38dp"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:paddingHorizontal="10dp"
-            android:layout_marginBottom="4dp"
-            android:background="@drawable/overlay_action_bg"
+            android:paddingHorizontal="12dp"
+            android:background="@drawable/overlay_menu_item_bg"
             android:clickable="true"
             android:focusable="true">
 
             <ImageView
                 android:layout_width="16dp"
                 android:layout_height="16dp"
-                android:layout_marginEnd="8dp"
+                android:layout_marginEnd="10dp"
                 android:src="@drawable/ic_settings" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Settings"
-                android:textColor="#FFFFFF"
-                android:textSize="12sp" />
+                android:text="Overlay Settings"
+                android:textColor="#F8FAFC"
+                android:textSize="13sp" />
         </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginHorizontal="10dp"
+            android:layout_marginVertical="2dp"
+            android:background="#1AFFFFFF" />
 
         <LinearLayout
             android:id="@+id/hideOverlayButton"
-            android:layout_width="148dp"
-            android:layout_height="36dp"
+            android:layout_width="176dp"
+            android:layout_height="38dp"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:paddingHorizontal="10dp"
-            android:background="@drawable/overlay_action_bg"
+            android:paddingHorizontal="12dp"
+            android:background="@drawable/overlay_menu_item_bg"
             android:clickable="true"
             android:focusable="true">
 
             <ImageView
                 android:layout_width="16dp"
                 android:layout_height="16dp"
-                android:layout_marginEnd="8dp"
+                android:layout_marginEnd="10dp"
                 android:src="@drawable/ic_visibility_off" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Hide Overlay"
-                android:textColor="#FFFFFF"
-                android:textSize="12sp" />
+                android:textColor="#F8FAFC"
+                android:textSize="13sp" />
         </LinearLayout>
     </LinearLayout>
 

@@ -17,6 +17,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+<a id="1.2.20"></a>
+## [1.2.20] - 2026-11-27 — Android Squircle Overlay Redesign, Apple Action Icon & Auto-Hide Keyboard Button
+
+### Changed
+- **Android Overlay Redesign (Proposal 1 — Squircles & Native Context Menu):**
+  - Replaced all oval button shapes with crisp `8dp` macOS-style squircles (`overlay_action_bg`, `overlay_action_active_bg`, `overlay_disconnect_bg`) accented in SideKick teal-green (`#0FA982` / `#00C896`).
+  - Replaced `Grid + Mac ▾` with a clean **Apple icon** button (`ic_apple.xml`) opening the squircle-tile Mac Actions popover (`Apps`, `Mission`, `Desktop`).
+  - Redesigned the `⋯` menu into flat native-style menu rows (`overlay_menu_item_bg`) with subtle dividers (`Switch Mac`, `Overlay Settings`, `Hide Overlay`; **Check Updates** remains cleanly inside *Overlay & Display Settings*).
+- **Auto-Hide Soft Keyboard Button with Hardware Keyboard (`MainActivity.kt`):** Automatically hides the on-screen keyboard button whenever a physical/Bluetooth/cover keyboard is attached (`HARDKEYBOARDHIDDEN_NO`) and restores it live when disconnected.
+
+---
+
 <a id="1.2.19"></a>
 ## [1.2.19] - 2026-11-27 — Optional Colored Menu Bar Icon
 

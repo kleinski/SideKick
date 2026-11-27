@@ -901,9 +901,9 @@ class MainActivity : AppCompatActivity() {
 
         fun updateTriggerToggleUi() {
             val isButton = prefs.overlayTriggerMode == PreferencesManager.TRIGGER_BUTTON
-            triggerNotchOption?.setBackgroundColor(if (!isButton) Color.parseColor("#2563EB") else Color.TRANSPARENT)
+            triggerNotchOption?.setBackgroundColor(if (!isButton) Color.parseColor("#0FA982") else Color.TRANSPARENT)
             triggerNotchOption?.setTextColor(if (!isButton) Color.WHITE else Color.parseColor("#94A3B8"))
-            triggerButtonOption?.setBackgroundColor(if (isButton) Color.parseColor("#2563EB") else Color.TRANSPARENT)
+            triggerButtonOption?.setBackgroundColor(if (isButton) Color.parseColor("#0FA982") else Color.TRANSPARENT)
             triggerButtonOption?.setTextColor(if (isButton) Color.WHITE else Color.parseColor("#94A3B8"))
         }
         updateTriggerToggleUi()
@@ -958,13 +958,20 @@ class MainActivity : AppCompatActivity() {
         binding.floatingTriggerButton.alpha = opacity
     }
 
-    private fun updateKeyboardButtonState() {
-        val visible = isConnected && keyboardAllowedOnMac
-        binding.keyboardButton.visibility = if (visible) View.VISIBLE else View.GONE
-        binding.specialKeysButton.visibility = if (visible) View.VISIBLE else View.GONE
+    private fun hasHardwareKeyboard(config: android.content.res.Configuration = resources.configuration): Boolean =
+        config.keyboard != android.content.res.Configuration.KEYBOARD_NOKEYS &&
+            config.hardKeyboardHidden == android.content.res.Configuration.HARDKEYBOARDHIDDEN_NO
+
+    private fun updateKeyboardButtonState(config: android.content.res.Configuration = resources.configuration) {
+        val allowed = isConnected && keyboardAllowedOnMac
+        val hwKeyboardAttached = hasHardwareKeyboard(config)
+        binding.keyboardButton.visibility = if (allowed && !hwKeyboardAttached) View.VISIBLE else View.GONE
+        binding.specialKeysButton.visibility = if (allowed) View.VISIBLE else View.GONE
         binding.keyboardButton.alpha = 1.0f
-        if (!visible) {
+        if (!allowed || hwKeyboardAttached) {
             hideSoftKeyboard()
+        }
+        if (!allowed) {
             binding.specialKeysPanel.visibility = View.GONE
             clearStickyModifiers()
         }
@@ -981,7 +988,9 @@ class MainActivity : AppCompatActivity() {
         binding.zoomPopover.visibility = View.GONE
         binding.moreMenuPopover.visibility = View.GONE
         binding.specialKeysPanel.visibility = View.GONE
-        binding.macActionsLabel.setTextColor(Color.WHITE)
+        binding.macActionsButton.setBackgroundResource(R.drawable.overlay_action_bg)
+        binding.zoomMenuButton.setBackgroundResource(R.drawable.overlay_action_bg)
+        binding.moreMenuButton.setBackgroundResource(R.drawable.overlay_action_bg)
         updateSpecialKeysBadge()
     }
 
@@ -993,8 +1002,10 @@ class MainActivity : AppCompatActivity() {
         closeAllPopovers()
         if (willShow) {
             popover.visibility = View.VISIBLE
-            if (popover === binding.macActionsPopover) {
-                binding.macActionsLabel.setTextColor(Color.parseColor("#60A5FA"))
+            when (popover) {
+                binding.macActionsPopover -> binding.macActionsButton.setBackgroundResource(R.drawable.overlay_action_active_bg)
+                binding.zoomPopover -> binding.zoomMenuButton.setBackgroundResource(R.drawable.overlay_action_active_bg)
+                binding.moreMenuPopover -> binding.moreMenuButton.setBackgroundResource(R.drawable.overlay_action_active_bg)
             }
             popover.post { positionPopoverBelowAnchor(popover, anchor) }
         }
@@ -1070,10 +1081,10 @@ class MainActivity : AppCompatActivity() {
         val panelOpen = binding.specialKeysPanel.visibility == View.VISIBLE
         val hasMods = activeStickyModifiers != 0
         binding.specialKeysButtonBadge.setBackgroundResource(
-            if (panelOpen || hasMods) R.drawable.overlay_action_bg else R.drawable.overlay_action_bg,
+            if (panelOpen || hasMods) R.drawable.overlay_action_active_bg else R.drawable.overlay_action_bg,
         )
         binding.specialKeysButtonBadge.setTextColor(
-            if (hasMods) Color.parseColor("#60A5FA") else Color.WHITE,
+            if (hasMods || panelOpen) Color.parseColor("#6EE7B7") else Color.WHITE,
         )
     }
 
@@ -1363,8 +1374,9 @@ class MainActivity : AppCompatActivity() {
         binding.statusBar.visibility = if (showBar) View.VISIBLE else View.GONE
         if (!showBar) closeAllPopovers()
         updateRestoreTriggerVisibility(overlayVisible = showBar)
-        binding.switchMacButton.visibility =
-            if (isConnected && !demoActive && pairedHostStorage.loadAll().size > 1) View.VISIBLE else View.GONE
+        val showSwitchMac = isConnected && !demoActive && pairedHostStorage.loadAll().size > 1
+        binding.switchMacButton.visibility = if (showSwitchMac) View.VISIBLE else View.GONE
+        binding.switchMacDivider.visibility = if (showSwitchMac) View.VISIBLE else View.GONE
         updateKeyboardButtonState()
     }
 
@@ -2438,6 +2450,7 @@ class MainActivity : AppCompatActivity() {
         } else {
             requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
         }
+        updateKeyboardButtonState(newConfig)
     }
 
     private fun log(message: String) {
