@@ -37,41 +37,43 @@
 >
 > I am deeply grateful for his outstanding engineering work on **SideScreen** and for his generous decision to release the entire project as open source under the **[MIT License](LICENSE)**. Without his craftsmanship and commitment to open source, **SideKick** would not exist. If you enjoy using SideKick, please consider [supporting his original work](#acknowledgements--upstream-support)!
 
-While the original **SideScreen** provides an exceptional streaming engine for connecting an Android tablet to a single Mac, **SideKick** extends and re-engineers the macOS host and Android client specifically for **seamless wireless multi-Mac workflows** — allowing you to move one Android tablet effortlessly between two or more MacBooks.
+While the original [**SideScreen**](https://github.com/tranvuongquocdat/SideScreen) provides an exceptional open-source streaming engine for connecting an Android tablet to a Mac — and [**SideScreen Pro**](https://www.sidescreen.dev/pro.html) expands it with **up to 3 simultaneous tablets per Mac**, **Mac audio on the tablet**, and **per-tablet settings** — **SideKick** takes a complementary direction focused on **seamless wireless multi-Mac workflows** (moving one Android tablet effortlessly between two or more MacBooks) along with E2E encryption, keyboard forwarding, and an interactive tablet control overlay.
 
-### Comparison: What's from Original `SideScreen` vs. What's New in `SideKick`
+> **Which one should you choose?**
+> - Choose [**SideScreen Pro**](https://www.sidescreen.dev/pro.html) (paid one-time license by Tran Vuong Quoc Dat / WNX Studio) if you want **multiple tablets connected simultaneously to one Mac** (up to 3), **Mac sound routed to your tablet**, and a direct way to support the original creator.
+> - Choose **SideKick** (this free, MIT-licensed fork) if you want **one tablet switching seamlessly between multiple MacBooks**, **AES-256-GCM wireless encryption**, **hardware/on-screen keyboard & Mac shortcut forwarding**, **zoom/pan controls**, and an **on-demand virtual display** that disappears automatically on disconnect.
 
-| Capability | Original `SideScreen` (Upstream) | `SideKick` Fork (My Additions) |
-|---|---|---|
-| **Core Streaming Engine** | Hardware-accelerated H.265 (`VideoToolbox` → `MediaCodec`), sub-16ms USB / <30ms WiFi latency | Inherited from upstream |
-| **Virtual Display & Input** | Native macOS `CGVirtualDisplay`, HiDPI (Retina 2×), 30–120 FPS, Gaming Boost, Touch Prediction | Inherited from upstream |
-| **Headless Mac Support** | Launch at Login & Auto-start streaming (v0.11.0) | Inherited from upstream |
-| **Wireless Pairing** | Single paired Mac (scanning a second Mac overwrites the first) | **Multi-Mac Pairing:** Pair once per MacBook; Android stores all paired Macs persistently |
-| **IP Address Changes** | Requires re-scanning the QR code if the Mac's LAN IP changes | **Automatic Bonjour / mDNS (`_sidescreen._tcp`):** Dynamically discovers paired Macs and updates their IP addresses |
-| **Smart Startup on Android** | Auto-reconnects to the single saved IP | **Smart Multi-Mac Connect:** Auto-connects if 1 paired Mac is online; opens a pre-filtered Mac picker if multiple paired Macs are online |
-| **Switching Between Macs** | Manual disconnect + re-pair or manual IP swap | **Two-Way Instant Takeover (`⌘⇧T`):** Pull the tablet to your current Mac via HMAC-SHA256 UDP handover (`54322`) or switch Macs directly from the Android in-stream dialog |
-| **Virtual Display Lifecycle** | Created when the streaming server starts | **Strictly On-Demand + Disconnect Tablet (`⌘⇧D`):** Display is created only when a tablet connects and destroyed immediately on disconnect so windows never get lost on an unseen monitor |
-| **Resolution / HiDPI Changes** | Rebuilds server and drops active tablet connection | **Live Display Rebuild:** Switching resolution, HiDPI, refresh rate, or Portrait/Landscape rotation updates the virtual display in-place while keeping the tablet connected |
-| **Wireless Security** | Plaintext token handshake (`SSWA`) & unencrypted TCP stream | **End-to-End Encrypted Wireless (`SSWE`):** Mutual HMAC-SHA256 challenge-response (token never sent in plaintext) + optional **AES-256-GCM** stream encryption (enabled by default) + live Android security status HUD (`🔒 AES-256` / `🔓 Off` / `🔌 USB`) |
-| **Keyboard Forwarding** | Touch & mouse input only | **Hardware & On-Screen Keyboard Forwarding:** Forward Bluetooth/USB/cover keyboards and the Android soft keyboard (plus a vertical Special Keys & Mac shortcuts strip with sticky `⌘`/`⌥`/`⌃`/`⇧`, arrows, `Esc`/`Tab`/`Del`, and `⌘ Space`/`⌘ Tab`/`⌘⌥ Esc`) to macOS, gated by the Mac's **Keyboard Control** permission toggle |
-| **macOS Menu Bar & UI** | Classic `NSMenu` dropdown + single scrolling settings window | **Native Menu Bar Popover (`NSPopover`) + 4-Tab Settings UI:** Left-click (or `⌘⇧W`) opens live metrics, Start/Stop, Takeover, Disconnect, Mode switch, live `Rotation` (`0°/90°/180°/270°`), and Touch/Keyboard/Encryption toggles; right-click opens the full dropdown menu |
-| **macOS TCC Permissions** | Signed with upstream developer ID; manual TCC handling on custom builds | **Persistent Local Signing & One-Click TCC Reset:** Includes `./scripts/setup_signing_cert.sh` (`"SideKick Local Signing"`), automatic TCC reset on binary changes, and live Accessibility status + **Reset & Prompt** right inside *Display & Touch* |
-| **Automation & Launcher** | GUI only | **URL Scheme, CLI & Vorssaint Integration:** Control via `sidekick://takeover`, `sidekick://disconnect`, `sidekick://toggle`, CLI flags, and automatic Vorssaint Quick Links |
-| **App Identity & Updates** | `SideScreen.app` (`com.sidescreen.app`) with Sparkle & Play Store auto-update | **`SideKick.app` (`com.sidekick.app`):** Separate bundle/app ID with upstream auto-updaters disabled so custom builds are never overwritten |
+### Comparison: `SideScreen` (Free) vs. `SideScreen Pro` vs. `SideKick`
+
+| Capability | Original `SideScreen` (Free) | `SideScreen Pro` ([sidescreen.dev/pro](https://www.sidescreen.dev/pro.html)) | `SideKick` Fork (My Additions) |
+|---|---|---|---|
+| **Core Streaming Engine** | Hardware-accelerated H.265/H.264 (`VideoToolbox` → `MediaCodec`), sub-16ms USB / <30ms WiFi | Included | Inherited from upstream |
+| **Virtual Display & Input** | Native macOS `CGVirtualDisplay`, HiDPI (Retina 2×), 30–120 FPS, Gaming Boost, Touch Prediction | Included | Inherited from upstream |
+| **Simultaneous Tablets per Mac** | 1 tablet | **Up to 3 tablets simultaneously** (mixed USB-C / Wi-Fi) | 1 tablet |
+| **Mac Audio on Tablet** | — | **Yes** (each display as a macOS sound output) | — |
+| **Multi-Mac Pairing & Discovery** | Single paired Mac | Per-tablet settings (3 Macs per license) | **Multi-Mac Pairing + Bonjour/mDNS (`_sidescreen._tcp`):** Store all paired MacBooks persistently, auto-track changing LAN IPs, optional Auto-Connect toggle |
+| **Switching Between Macs** | Manual disconnect + re-pair | Manual | **Two-Way Instant Takeover (`⌘⇧T`):** Pull the tablet via HMAC-SHA256 UDP handover (`54322`) or switch Macs from the Android `⋯` menu |
+| **Virtual Display Lifecycle & Reliability** | Created on server start | Per-tablet display lifecycle | **Strictly On-Demand + Watchdogs (`⌘⇧D`):** Display exists only while streaming; 6s Mac watchdog, Android task-kill teardown, 5s Android heartbeat timeout, and dynamic wake lock |
+| **Resolution, HiDPI & Rotation** | Rebuilds server on display changes | Per-tablet resolution, orientation & position | **Live In-Place Rebuild + Orientation Lock:** Resolution, HiDPI, refresh rate, and Portrait/Landscape rotation rebuild live without disconnecting; tablet sensor rotation locked (incl. Android 16 opt-out) |
+| **Wireless Security** | Plaintext token handshake (`SSWA`) | Upstream wireless auth | **End-to-End Encrypted Wireless (`SSWE`):** Mutual HMAC-SHA256 challenge-response + **AES-256-GCM** stream encryption (default on) + live lock badge (`🔒`) |
+| **Keyboard & Mac Shortcuts** | Touch & mouse input | Touch & mouse input | **Hardware & Soft Keyboard + Special Keys (`⌘`):** Full keyboard forwarding (Touch ID / password guard on Mac), vertical sticky-modifier & shortcut panel (`⌘`/`⌥`/`⌃`/`⇧`, `Esc`/`Tab`/`Del`/arrows, `⌘ Space`/`⌘ Tab`/`⌘⌥ Esc`), plus 1-tap **Apps**, **Mission Control** & **Desktop** actions |
+| **Android Overlay & Zoom/Pan** | Corner stats + settings button | Upstream Android app | **Draggable Mini-Status-Pill + Popovers + Zoom/Pan:** Ultra-slim single-row pill (`Mac ▾`, `Keyboard`, `⌘`, `100% ▾`, `⋯`, `Disconnect`), `Zoom - / 1:1 / Zoom + / Fit` + pinch-to-zoom, selectable **Top Notch** or **SideKick Floating Button** trigger with saved positions |
+| **macOS Menu Bar & Automation** | Classic `NSMenu` + settings window | Pro Overview & License UI | **Native `NSPopover` + 4-Tab Settings + Automation:** Left-click (`⌘⇧W`) quick-control popover (incl. live `Rotation` picker), URL scheme (`sidekick://`), CLI flags, Vorssaint Quick Links, persistent local signing & one-click TCC reset |
 
 ---
 
 ## SideKick Highlights (Added in This Fork)
 
-- **Multi-Mac Wireless Pairing & Bonjour Discovery (`_sidescreen._tcp`):** Pair once per MacBook via QR code. The Android app stores every paired MacBook persistently, discovers which Macs are currently online via mDNS/Bonjour, and automatically tracks changing DHCP IP addresses.
+- **Multi-Mac Wireless Pairing & Bonjour Discovery (`_sidescreen._tcp`):** Pair once per MacBook via QR code (or one-time pairing code). The Android app stores every paired MacBook persistently, discovers which Macs are currently online via mDNS/Bonjour, automatically tracks changing DHCP IP addresses, and lets you toggle **Auto-Connect** on or off.
 - **Two-Way Instant Takeover (`⌘⇧T`):** Switch the active tablet stream between MacBooks at any time:
   - **From Mac:** Click **Take Over Tablet** in the menu bar / Settings footer or press `⌘⇧T` (sends an HMAC-SHA256 authenticated UDP broadcast on port `54322`).
-  - **From Android:** Open the in-stream settings overlay (`⚙`) while streaming and tap another paired MacBook to switch immediately.
-- **End-to-End Wireless Encryption (`SSWE` / AES-256-GCM):** Wireless connections use a mutual HMAC-SHA256 challenge-response handshake (so the 256-bit pairing token is never sent in plaintext over the air) and encrypt all video frames, display configs, touch input, and keyboard events using hardware-accelerated **AES-256-GCM** with per-session ephemeral keys. The Android stats overlay (`SECURITY` column), in-stream settings banner, and connect toast display the active encryption state in real time.
-- **Native macOS Menu Bar Popover (`NSPopover`):** Left-click the SideKick menu bar icon (or press `⌘⇧W`) for an instant quick-control popover showing live FPS, bitrate, resolution, Start/Stop, Takeover (`⌘⇧T`), Disconnect (`⌘⇧D`), USB/Wi-Fi switch, live `Rotation` (`0° / 90° / 180° / 270°`), and Touch / Keyboard / Encryption toggles. Right-click (or Control-click) opens the classic dropdown menu.
-- **Tablet-to-Mac Keyboard Forwarding, Mac Actions & Zoom/Pan:** Use a Bluetooth/USB/cover keyboard or tap the floating keyboard icon on Android to type directly into macOS (including `⌘`, `⌥`, `⌃`, `⇧` shortcuts, navigation, `F1–F12`, and international characters). The top overlay also includes 1-tap Mac system actions (**Apps**, **Mission Control**, **Desktop**), **Zoom - / 1:1 / Zoom + / Fit** controls (plus pinch-to-zoom & pan), and a dedicated `⌘` button that opens a vertical Special Keys panel with one-shot sticky modifiers (`⌘`, `⌥`, `⌃`, `⇧`), `Esc`/`Tab`/`Del`/arrow keys, and 1-tap Mac shortcuts (`⌘ Space`, `⌘ Tab`, `⌘⌥ Esc`). Keyboard input can be blocked in one click from the Mac app (*Menu Bar Popover* or *Settings → Display & Touch*), and re-enabling it requires **Touch ID / macOS user password**.
-- **On-Demand Virtual Display & Disconnect Tablet (`⌘⇧D`):** The macOS virtual display is only active while a tablet is actually streaming. Use **Disconnect Tablet** (`⌘⇧D`) to end the tablet session and remove the virtual display while keeping the Mac server listening in standby.
-- **Live Resolution, HiDPI, Refresh Rate & Rotation Switching:** Change resolution, Retina/HiDPI mode, frame rate, or Portrait/Landscape rotation on the fly — the Mac rebuilds the virtual display and notifies the Android decoder without dropping your session.
+  - **From Android:** Open the `⋯` menu in the Mini-Status-Pill and tap **Switch Mac** to jump straight to another paired MacBook.
+- **End-to-End Wireless Encryption (`SSWE` / AES-256-GCM):** Wireless connections use a mutual HMAC-SHA256 challenge-response handshake (so the 256-bit pairing token is never sent in plaintext over the air) and encrypt all video frames, display configs, touch input, and keyboard events using hardware-accelerated **AES-256-GCM** with per-session ephemeral keys.
+- **Draggable Mini-Status-Pill, Popovers & Selectable Trigger:** An ultra-slim, single-row frosted-glass pill (`MacBook Pro · 60 FPS · 🔒`) with dynamically anchored popovers for **Mac Actions** (`Apps`, `Mission Control`, `Desktop`), **Zoom** (`-`, `1:1`, `+`, `Fit` + pinch-to-zoom & pan), **Special Keys** (`⌘`), and **More** (`Switch Mac`, `Settings`, `Hide Overlay`). Choose between a **Top Notch** or a draggable **SideKick Button** trigger in Settings — SideKick remembers the last position of both elements across sessions.
+- **Tablet-to-Mac Keyboard Forwarding & Special Keys Strip:** Use a Bluetooth/USB/cover keyboard or tap the **Keyboard** icon on Android to type directly into macOS (including `⌘`, `⌥`, `⌃`, `⇧` shortcuts, navigation, `F1–F12`, and international characters). The `⌘` button opens a vertical Special Keys panel with one-shot sticky modifiers, `Esc`/`Tab`/`Del`/arrow keys, and 1-tap Mac shortcuts (`⌘ Space`, `⌘ Tab`, `⌘⌥ Esc`). Re-enabling **Keyboard Control** on the Mac requires **Touch ID / macOS user password**.
+- **Native macOS Menu Bar Popover (`NSPopover`):** Left-click the SideKick menu bar icon (or press `⌘⇧W`) for live FPS, bitrate, resolution, Start/Stop, Takeover (`⌘⇧T`), Disconnect (`⌘⇧D`), USB/Wi-Fi switch, live `Rotation` (`0° / 90° / 180° / 270°`), and Touch / Keyboard / Encryption toggles. Right-click opens the classic dropdown menu.
+- **On-Demand Virtual Display, Watchdogs & Dynamic Wake Lock (`⌘⇧D`):** The macOS virtual display is created only when a tablet connects and torn down immediately on disconnect, Android app swipe-away (`DisconnectOnTaskRemovedService`), or after a 6-second Mac liveness timeout. On Android, a 5-second stream heartbeat timeout cleanly returns to the Home Screen if the MacBook powers off or sleeps, and `FLAG_KEEP_SCREEN_ON` is active only while streaming.
+- **Live Resolution, HiDPI, Refresh Rate & Rotation Switching:** Change resolution, Retina/HiDPI mode, frame rate, or Portrait/Landscape rotation on the fly — the Mac rebuilds the virtual display in-place without dropping your session. Android tablet sensor rotation is locked (including the Android 16 large-screen opt-out) so only the Mac app controls orientation.
 - **URL Scheme, CLI & Vorssaint Command Bar Integration:**
   - **URL Scheme:** `sidekick://takeover`, `sidekick://disconnect`, `sidekick://toggle`, `sidekick://start`, `sidekick://stop`, `sidekick://settings`
   - **CLI Flags:** `/Applications/SideKick.app/Contents/MacOS/SideKick --takeover` (or `--disconnect`, `--toggle`, `--start`, `--stop`, `--settings`)
@@ -166,8 +168,8 @@ Download the latest **SideKick** builds from [**GitHub Releases (`kleinski/SideK
     ```
   - Because SideKick uses the package ID `com.sidekick.app`, it can be installed alongside the original Google Play `SideScreen` app without conflict.
 
-> **Looking for the original single-Mac version?**
-> The upstream project by Tran Vuong Quoc Dat is available on [Google Play](https://play.google.com/store/apps/details?id=com.sidescreen.app) and [tranvuongquocdat/SideScreen Releases](https://github.com/tranvuongquocdat/SideScreen/releases).
+> **Looking for the original `SideScreen` or `SideScreen Pro`?**
+> The upstream project by Tran Vuong Quoc Dat is available on [Google Play](https://play.google.com/store/apps/details?id=com.sidescreen.app), [tranvuongquocdat/SideScreen Releases](https://github.com/tranvuongquocdat/SideScreen/releases), and as [**SideScreen Pro**](https://www.sidescreen.dev/pro.html) (up to 3 simultaneous tablets per Mac + Mac audio on tablet).
 
 > **⚠️ ADB Required for USB Mode**
 > For wired USB-C connections, the Mac app needs `adb` to set up port forwarding:
@@ -207,9 +209,9 @@ cd SideKick
 3. **Automatic Connection & Switching:**
    - When only **one** paired MacBook is running SideKick on your WiFi, opening the Android app connects to it automatically.
    - When **multiple** paired MacBooks are online, the Android app highlights the online Macs (`● Online`) so you can pick which Mac to connect to.
-   - **Switch Macs at any time:** Press `⌘⇧T` (or click **Takeover** in the Menu Bar Popover) on the MacBook you want to switch to, or open the in-stream settings (`⚙`) on the tablet and tap another paired Mac.
+   - **Switch Macs at any time:** Press `⌘⇧T` (or click **Takeover** in the Menu Bar Popover) on the MacBook you want to switch to, or tap `⋯` → **Switch Mac** in the Android Mini-Status-Pill.
    - **Disconnect without stopping the server:** Press `⌘⇧D` (or click **Disconnect Tablet** in the Menu Bar Popover) to close the tablet session and remove the virtual display while keeping the Mac ready for the next connection.
-   - **Type from your tablet:** Connect a hardware keyboard or tap the floating **Keyboard** icon next to `⚙` on Android to open the on-screen keyboard. Toggle **Keyboard Control** in the Mac Menu Bar Popover (or *Settings → Display & Touch*) to allow or block keyboard input.
+   - **Type, trigger Mac actions, or zoom from your tablet:** Use the draggable Mini-Status-Pill on Android for **Mac ▾** (`Apps`, `Mission Control`, `Desktop`), **Keyboard**, **⌘** (Special Keys), and **100% ▾** (`Zoom - / 1:1 / Zoom + / Fit`). Toggle **Keyboard Control** in the Mac Menu Bar Popover (or *Settings → Display & Touch*) to allow or block keyboard input.
 
 ### USB Mode (Lowest Latency)
 
@@ -266,17 +268,18 @@ With **"Displays have separate Spaces"** turned off, macOS blanks every other di
 
 Special thanks and my sincere gratitude go to **[Tran Vuong Quoc Dat](https://github.com/tranvuongquocdat)** for creating **[SideScreen](https://github.com/tranvuongquocdat/SideScreen)** ([sidescreen.dev](https://sidescreen.dev)) and generously publishing his work under the permissive **[MIT License](LICENSE)**. Building a reliable, sub-16ms virtual display and H.265 streaming stack across macOS and Android is a remarkable technical achievement, and sharing it freely with the community made it possible for me to build **SideKick** on top of his solid foundation.
 
-If **SideKick** or **SideScreen** is useful to your daily workflow, please consider supporting **Tran Vuong Quoc Dat** and his original project:
+If **SideKick** or **SideScreen** is useful to your daily workflow, please consider supporting **Tran Vuong Quoc Dat** by checking out [**SideScreen Pro**](https://www.sidescreen.dev/pro.html) or donating directly:
 
 <div align="center">
 
+[![SideScreen Pro](https://img.shields.io/badge/SideScreen_Pro-007AFF?style=for-the-badge&logo=apple&logoColor=white)](https://www.sidescreen.dev/pro.html)
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/tranvuongqk)
 [![GitHub Sponsors](https://img.shields.io/badge/GitHub%20Sponsors-EA4AAA?style=for-the-badge&logo=github-sponsors&logoColor=white)](https://github.com/sponsors/tranvuongquocdat)
 [![VietQR](https://img.shields.io/badge/Vietnam-VietQR-DA251D?style=for-the-badge&logoColor=white)](https://sidescreen.dev/donate.html)
 
 </div>
 
-- **Original Project (`SideScreen`):** [**Tran Vuong Quoc Dat**](https://github.com/tranvuongquocdat) — [tranvuongquocdat/SideScreen](https://github.com/tranvuongquocdat/SideScreen) · [sidescreen.dev](https://sidescreen.dev)
+- **Original Project (`SideScreen` & `SideScreen Pro`):** [**Tran Vuong Quoc Dat**](https://github.com/tranvuongquocdat) — [tranvuongquocdat/SideScreen](https://github.com/tranvuongquocdat/SideScreen) · [sidescreen.dev](https://sidescreen.dev) · [SideScreen Pro](https://www.sidescreen.dev/pro.html)
 - **SideKick Multi-Mac Fork:** Maintained by [**kleinski**](https://github.com/kleinski) — [kleinski/SideKick](https://github.com/kleinski/SideKick)
 
 ---
