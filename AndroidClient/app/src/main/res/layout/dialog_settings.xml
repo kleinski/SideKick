@@ -24,7 +24,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Overlay &amp; Display Settings"
+            android:text="Settings"
             android:textColor="#FFFFFF"
             android:textSize="18sp"
             android:textStyle="bold" />
@@ -34,7 +34,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginEnd="8dp"
-            android:text="v1.2.22"
+            android:text="v1.2.25"
             android:textColor="#64748B"
             android:textSize="11sp"
             android:fontFamily="monospace" />
@@ -73,7 +73,7 @@
         android:background="@drawable/settings_group_bg"
         android:paddingHorizontal="14dp"
         android:paddingVertical="10dp"
-        android:layout_marginBottom="14dp"
+        android:layout_marginBottom="12dp"
         android:visibility="gone">
 
         <TextView
@@ -95,21 +95,23 @@
             android:layout_marginTop="2dp" />
     </LinearLayout>
 
-    <!-- Grouped Controls Card -->
+    <!-- Collapsible Submenu 1: Overlay Settings -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="@drawable/settings_group_bg"
         android:orientation="vertical">
 
-        <!-- Row 1: Show Live Stats -->
         <LinearLayout
+            android:id="@+id/overlaySectionHeader"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
             android:paddingHorizontal="16dp"
-            android:paddingVertical="12dp">
+            android:paddingVertical="14dp"
+            android:clickable="true"
+            android:focusable="true">
 
             <LinearLayout
                 android:layout_width="0dp"
@@ -121,237 +123,287 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Show Live Stats"
+                    android:text="Overlay Settings"
                     android:textColor="#FFFFFF"
                     android:textSize="14sp"
                     android:textStyle="bold" />
 
                 <TextView
+                    android:id="@+id/overlaySectionSummary"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="FPS, bitrate, resolution, RTT"
+                    android:text="Top Notch · 80% opacity"
                     android:textColor="#94A3B8"
                     android:textSize="11sp"
                     android:layout_marginTop="2dp" />
             </LinearLayout>
 
-            <com.google.android.material.switchmaterial.SwitchMaterial
-                android:id="@+id/showStatsSwitch"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:checked="true"
-                app:thumbTint="@color/switch_thumb_color"
-                app:trackTint="@color/switch_track_color" />
+            <TextView
+                android:id="@+id/overlaySectionChevron"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:gravity="center"
+                android:text="›"
+                android:textColor="#00C896"
+                android:textSize="20sp"
+                android:textStyle="bold" />
         </LinearLayout>
 
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginHorizontal="16dp"
-            android:background="#1AFFFFFF" />
-
-        <!-- Row 2: Auto-Hide Top Overlay -->
         <LinearLayout
+            android:id="@+id/overlaySectionContent"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:paddingHorizontal="16dp"
-            android:paddingVertical="12dp">
+            android:orientation="vertical"
+            android:visibility="gone">
 
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginHorizontal="16dp"
+                android:background="#1AFFFFFF" />
+
+            <!-- Row 1: Show Live Stats -->
             <LinearLayout
-                android:layout_width="0dp"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="12dp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:layout_marginEnd="12dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Show Live Stats"
+                        android:textColor="#FFFFFF"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="FPS, bitrate, resolution, RTT"
+                        android:textColor="#94A3B8"
+                        android:textSize="11sp"
+                        android:layout_marginTop="2dp" />
+                </LinearLayout>
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/showStatsSwitch"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:checked="true"
+                    app:thumbTint="@color/switch_thumb_color"
+                    app:trackTint="@color/switch_track_color" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginHorizontal="16dp"
+                android:background="#1AFFFFFF" />
+
+            <!-- Row 2: Auto-Hide Top Overlay -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="12dp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:layout_marginEnd="12dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Auto-Hide Top Overlay"
+                        android:textColor="#FFFFFF"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Hide after 5s; restore via selected trigger"
+                        android:textColor="#94A3B8"
+                        android:textSize="11sp"
+                        android:layout_marginTop="2dp" />
+                </LinearLayout>
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/hideSettingsSwitch"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:checked="false"
+                    app:thumbTint="@color/switch_thumb_color"
+                    app:trackTint="@color/switch_track_color" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginHorizontal="16dp"
+                android:background="#1AFFFFFF" />
+
+            <!-- Row 3: Overlay Trigger Mode (Notch vs Floating SideKick Button) -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:layout_marginEnd="12dp">
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="12dp">
 
-                <TextView
-                    android:layout_width="wrap_content"
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Auto-Hide Top Overlay"
-                    android:textColor="#FFFFFF"
-                    android:textSize="14sp"
-                    android:textStyle="bold" />
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="8dp">
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Hide after 5s; restore via selected trigger"
-                    android:textColor="#94A3B8"
-                    android:textSize="11sp"
-                    android:layout_marginTop="2dp" />
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Overlay Trigger"
+                        android:textColor="#FFFFFF"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/resetOverlayPositionsBtn"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Reset Positions"
+                        android:textColor="#00C896"
+                        android:textSize="11sp"
+                        android:paddingHorizontal="6dp"
+                        android:paddingVertical="2dp"
+                        android:clickable="true"
+                        android:focusable="true" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="36dp"
+                    android:orientation="horizontal"
+                    android:background="@drawable/overlay_action_bg"
+                    android:padding="3dp">
+
+                    <TextView
+                        android:id="@+id/triggerNotchOption"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:text="Top Notch"
+                        android:textColor="#FFFFFF"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:clickable="true"
+                        android:focusable="true" />
+
+                    <TextView
+                        android:id="@+id/triggerButtonOption"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:text="SideKick Button"
+                        android:textColor="#94A3B8"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:clickable="true"
+                        android:focusable="true" />
+                </LinearLayout>
             </LinearLayout>
 
-            <com.google.android.material.switchmaterial.SwitchMaterial
-                android:id="@+id/hideSettingsSwitch"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:checked="false"
-                app:thumbTint="@color/switch_thumb_color"
-                app:trackTint="@color/switch_track_color" />
-        </LinearLayout>
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginHorizontal="16dp"
+                android:background="#1AFFFFFF" />
 
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginHorizontal="16dp"
-            android:background="#1AFFFFFF" />
-
-        <!-- Row 2b: Overlay Trigger Mode (Notch vs Floating SideKick Button) -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:paddingHorizontal="16dp"
-            android:paddingVertical="12dp">
-
+            <!-- Row 4: Overlay Opacity -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:layout_marginBottom="8dp">
+                android:orientation="vertical"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="12dp">
 
-                <TextView
-                    android:layout_width="0dp"
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="Overlay Trigger"
-                    android:textColor="#FFFFFF"
-                    android:textSize="14sp"
-                    android:textStyle="bold" />
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="4dp">
 
-                <TextView
-                    android:id="@+id/resetOverlayPositionsBtn"
-                    android:layout_width="wrap_content"
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Overlay Opacity"
+                        android:textColor="#FFFFFF"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/opacityValue"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="80%"
+                        android:textColor="#00C896"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:fontFamily="monospace" />
+                </LinearLayout>
+
+                <com.google.android.material.slider.Slider
+                    android:id="@+id/opacitySlider"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Reset Positions"
-                    android:textColor="#00C896"
-                    android:textSize="11sp"
-                    android:paddingHorizontal="6dp"
-                    android:paddingVertical="2dp"
-                    android:clickable="true"
-                    android:focusable="true" />
+                    android:valueFrom="0.1"
+                    android:valueTo="1.0"
+                    android:value="0.8"
+                    android:stepSize="0.05"
+                    app:thumbColor="#00C896"
+                    app:trackColorActive="#0FA982"
+                    app:trackColorInactive="#33FFFFFF" />
             </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="36dp"
-                android:orientation="horizontal"
-                android:background="@drawable/overlay_action_bg"
-                android:padding="3dp">
-
-                <TextView
-                    android:id="@+id/triggerNotchOption"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_weight="1"
-                    android:gravity="center"
-                    android:text="Top Notch"
-                    android:textColor="#FFFFFF"
-                    android:textSize="12sp"
-                    android:textStyle="bold"
-                    android:clickable="true"
-                    android:focusable="true" />
-
-                <TextView
-                    android:id="@+id/triggerButtonOption"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_weight="1"
-                    android:gravity="center"
-                    android:text="SideKick Button"
-                    android:textColor="#94A3B8"
-                    android:textSize="12sp"
-                    android:textStyle="bold"
-                    android:clickable="true"
-                    android:focusable="true" />
-            </LinearLayout>
-        </LinearLayout>
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginHorizontal="16dp"
-            android:background="#1AFFFFFF" />
-
-        <!-- Row 3: Overlay Opacity -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:paddingHorizontal="16dp"
-            android:paddingVertical="12dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:layout_marginBottom="4dp">
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="Overlay Opacity"
-                    android:textColor="#FFFFFF"
-                    android:textSize="14sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/opacityValue"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="80%"
-                    android:textColor="#38BDF8"
-                    android:textSize="12sp"
-                    android:textStyle="bold"
-                    android:fontFamily="monospace" />
-            </LinearLayout>
-
-            <com.google.android.material.slider.Slider
-                android:id="@+id/opacitySlider"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:valueFrom="0.1"
-                android:valueTo="1.0"
-                android:value="0.8"
-                android:stepSize="0.05"
-                app:thumbColor="#00C896"
-                app:trackColorActive="#0FA982"
-                app:trackColorInactive="#33FFFFFF" />
         </LinearLayout>
     </LinearLayout>
 
-    <!-- Gestures Section (macOS Trackpad Style) -->
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:layout_marginBottom="6dp"
-        android:layout_marginStart="4dp"
-        android:text="GESTURES"
-        android:textColor="#00C896"
-        android:textSize="11sp"
-        android:textStyle="bold"
-        android:letterSpacing="0.06" />
-
+    <!-- Collapsible Submenu 2: Gestures (macOS Trackpad Style) -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
         android:background="@drawable/settings_group_bg"
         android:orientation="vertical">
 
-        <!-- Gesture 1: Pinch to Zoom & Pan -->
         <LinearLayout
+            android:id="@+id/gesturesSectionHeader"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
             android:paddingHorizontal="16dp"
-            android:paddingVertical="10dp">
+            android:paddingVertical="14dp"
+            android:clickable="true"
+            android:focusable="true">
 
             <LinearLayout
                 android:layout_width="0dp"
@@ -363,261 +415,320 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Pinch to Zoom &amp; Pan"
+                    android:text="Gestures"
                     android:textColor="#FFFFFF"
-                    android:textSize="13sp"
+                    android:textSize="14sp"
                     android:textStyle="bold" />
 
                 <TextView
+                    android:id="@+id/gesturesSectionSummary"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="2-finger pinch zooms the tablet viewport"
+                    android:text="6 of 6 enabled"
                     android:textColor="#94A3B8"
-                    android:textSize="11sp" />
+                    android:textSize="11sp"
+                    android:layout_marginTop="2dp" />
             </LinearLayout>
 
-            <com.google.android.material.switchmaterial.SwitchMaterial
-                android:id="@+id/gesturePinchZoomSwitch"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:checked="true"
-                app:thumbTint="@color/switch_thumb_color"
-                app:trackTint="@color/switch_track_color" />
+            <TextView
+                android:id="@+id/gesturesSectionChevron"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:gravity="center"
+                android:text="›"
+                android:textColor="#00C896"
+                android:textSize="20sp"
+                android:textStyle="bold" />
         </LinearLayout>
 
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginHorizontal="16dp"
-            android:background="#1AFFFFFF" />
-
-        <!-- Gesture 2: Mission Control -->
         <LinearLayout
+            android:id="@+id/gesturesSectionContent"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:paddingHorizontal="16dp"
-            android:paddingVertical="10dp">
+            android:orientation="vertical"
+            android:visibility="gone">
 
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginHorizontal="16dp"
+                android:background="#1AFFFFFF" />
+
+            <!-- Gesture 1: Pinch to Zoom & Pan -->
             <LinearLayout
-                android:layout_width="0dp"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical"
-                android:layout_marginEnd="12dp">
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="10dp">
 
-                <TextView
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:layout_marginEnd="12dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Pinch to Zoom &amp; Pan"
+                        android:textColor="#FFFFFF"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="2-finger pinch zooms the tablet viewport"
+                        android:textColor="#94A3B8"
+                        android:textSize="11sp" />
+                </LinearLayout>
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/gesturePinchZoomSwitch"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Mission Control"
-                    android:textColor="#FFFFFF"
-                    android:textSize="13sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="3-finger swipe up"
-                    android:textColor="#94A3B8"
-                    android:textSize="11sp" />
+                    android:checked="true"
+                    app:thumbTint="@color/switch_thumb_color"
+                    app:trackTint="@color/switch_track_color" />
             </LinearLayout>
 
-            <com.google.android.material.switchmaterial.SwitchMaterial
-                android:id="@+id/gestureMissionControlSwitch"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:checked="true"
-                app:thumbTint="@color/switch_thumb_color"
-                app:trackTint="@color/switch_track_color" />
-        </LinearLayout>
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginHorizontal="16dp"
+                android:background="#1AFFFFFF" />
 
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginHorizontal="16dp"
-            android:background="#1AFFFFFF" />
-
-        <!-- Gesture 3: App Exposé -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:paddingHorizontal="16dp"
-            android:paddingVertical="10dp">
-
+            <!-- Gesture 2: Mission Control -->
             <LinearLayout
-                android:layout_width="0dp"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical"
-                android:layout_marginEnd="12dp">
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="10dp">
 
-                <TextView
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:layout_marginEnd="12dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Mission Control"
+                        android:textColor="#FFFFFF"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="3-finger swipe up"
+                        android:textColor="#94A3B8"
+                        android:textSize="11sp" />
+                </LinearLayout>
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/gestureMissionControlSwitch"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="App Exposé"
-                    android:textColor="#FFFFFF"
-                    android:textSize="13sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="3-finger swipe down"
-                    android:textColor="#94A3B8"
-                    android:textSize="11sp" />
+                    android:checked="true"
+                    app:thumbTint="@color/switch_thumb_color"
+                    app:trackTint="@color/switch_track_color" />
             </LinearLayout>
 
-            <com.google.android.material.switchmaterial.SwitchMaterial
-                android:id="@+id/gestureAppExposeSwitch"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:checked="true"
-                app:thumbTint="@color/switch_thumb_color"
-                app:trackTint="@color/switch_track_color" />
-        </LinearLayout>
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginHorizontal="16dp"
+                android:background="#1AFFFFFF" />
 
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginHorizontal="16dp"
-            android:background="#1AFFFFFF" />
-
-        <!-- Gesture 4: Switch Spaces -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:paddingHorizontal="16dp"
-            android:paddingVertical="10dp">
-
+            <!-- Gesture 3: App Exposé -->
             <LinearLayout
-                android:layout_width="0dp"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical"
-                android:layout_marginEnd="12dp">
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="10dp">
 
-                <TextView
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:layout_marginEnd="12dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="App Exposé"
+                        android:textColor="#FFFFFF"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="3-finger swipe down"
+                        android:textColor="#94A3B8"
+                        android:textSize="11sp" />
+                </LinearLayout>
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/gestureAppExposeSwitch"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Switch Spaces"
-                    android:textColor="#FFFFFF"
-                    android:textSize="13sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="3-finger swipe left or right"
-                    android:textColor="#94A3B8"
-                    android:textSize="11sp" />
+                    android:checked="true"
+                    app:thumbTint="@color/switch_thumb_color"
+                    app:trackTint="@color/switch_track_color" />
             </LinearLayout>
 
-            <com.google.android.material.switchmaterial.SwitchMaterial
-                android:id="@+id/gestureSwitchSpacesSwitch"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:checked="true"
-                app:thumbTint="@color/switch_thumb_color"
-                app:trackTint="@color/switch_track_color" />
-        </LinearLayout>
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginHorizontal="16dp"
+                android:background="#1AFFFFFF" />
 
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginHorizontal="16dp"
-            android:background="#1AFFFFFF" />
-
-        <!-- Gesture 5: Show Desktop -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:paddingHorizontal="16dp"
-            android:paddingVertical="10dp">
-
+            <!-- Gesture 4: Switch Spaces -->
             <LinearLayout
-                android:layout_width="0dp"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical"
-                android:layout_marginEnd="12dp">
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="10dp">
 
-                <TextView
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:layout_marginEnd="12dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Switch Spaces"
+                        android:textColor="#FFFFFF"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="3-finger swipe left or right"
+                        android:textColor="#94A3B8"
+                        android:textSize="11sp" />
+                </LinearLayout>
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/gestureSwitchSpacesSwitch"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Show Desktop"
-                    android:textColor="#FFFFFF"
-                    android:textSize="13sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="4-finger swipe up"
-                    android:textColor="#94A3B8"
-                    android:textSize="11sp" />
+                    android:checked="true"
+                    app:thumbTint="@color/switch_thumb_color"
+                    app:trackTint="@color/switch_track_color" />
             </LinearLayout>
 
-            <com.google.android.material.switchmaterial.SwitchMaterial
-                android:id="@+id/gestureShowDesktopSwitch"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:checked="true"
-                app:thumbTint="@color/switch_thumb_color"
-                app:trackTint="@color/switch_track_color" />
-        </LinearLayout>
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginHorizontal="16dp"
+                android:background="#1AFFFFFF" />
 
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginHorizontal="16dp"
-            android:background="#1AFFFFFF" />
-
-        <!-- Gesture 6: Open Mac Apps -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:paddingHorizontal="16dp"
-            android:paddingVertical="10dp">
-
+            <!-- Gesture 5: Show Desktop -->
             <LinearLayout
-                android:layout_width="0dp"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical"
-                android:layout_marginEnd="12dp">
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="10dp">
 
-                <TextView
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:layout_marginEnd="12dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Show Desktop"
+                        android:textColor="#FFFFFF"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="4-finger swipe up"
+                        android:textColor="#94A3B8"
+                        android:textSize="11sp" />
+                </LinearLayout>
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/gestureShowDesktopSwitch"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Open Mac Apps"
-                    android:textColor="#FFFFFF"
-                    android:textSize="13sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="4-finger tap or swipe down"
-                    android:textColor="#94A3B8"
-                    android:textSize="11sp" />
+                    android:checked="true"
+                    app:thumbTint="@color/switch_thumb_color"
+                    app:trackTint="@color/switch_track_color" />
             </LinearLayout>
 
-            <com.google.android.material.switchmaterial.SwitchMaterial
-                android:id="@+id/gestureAppsSwitch"
-                android:layout_width="wrap_content"
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginHorizontal="16dp"
+                android:background="#1AFFFFFF" />
+
+            <!-- Gesture 6: Open Mac Apps -->
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:checked="true"
-                app:thumbTint="@color/switch_thumb_color"
-                app:trackTint="@color/switch_track_color" />
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="10dp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:layout_marginEnd="12dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Open Mac Apps"
+                        android:textColor="#FFFFFF"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="4-finger tap or swipe down"
+                        android:textColor="#94A3B8"
+                        android:textSize="11sp" />
+                </LinearLayout>
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/gestureAppsSwitch"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:checked="true"
+                    app:thumbTint="@color/switch_thumb_color"
+                    app:trackTint="@color/switch_track_color" />
+            </LinearLayout>
         </LinearLayout>
     </LinearLayout>
 

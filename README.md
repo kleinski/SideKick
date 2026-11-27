@@ -52,33 +52,36 @@ While the original [**SideScreen**](https://github.com/tranvuongquocdat/SideScre
 | **Virtual Display & Input** | Native macOS `CGVirtualDisplay`, HiDPI (Retina 2×), 30–120 FPS, Gaming Boost, Touch Prediction | Included | Inherited from upstream |
 | **Simultaneous Tablets per Mac** | 1 tablet | **Up to 3 tablets simultaneously** (mixed USB-C / Wi-Fi) | 1 tablet |
 | **Mac Audio on Tablet** | — | **Yes** (each display as a macOS sound output) | — |
-| **Multi-Mac Pairing & Discovery** | Single paired Mac | Per-tablet settings (3 Macs per license) | **Multi-Mac Pairing + Bonjour/mDNS (`_sidescreen._tcp`):** Store all paired MacBooks persistently, auto-track changing LAN IPs, optional Auto-Connect toggle |
-| **Switching Between Macs** | Manual disconnect + re-pair | Manual | **Two-Way Instant Takeover (`⌘⇧T`):** Pull the tablet via HMAC-SHA256 UDP handover (`54322`) or switch Macs from the Android `⋯` menu |
+| **Multi-Mac Pairing & Discovery** | Single paired Mac | Per-tablet settings (3 Macs per license) | **Multi-Mac Pairing + Periodic Bonjour Scan (`_sidescreen._tcp`):** Store all paired MacBooks persistently, configurable Auto-Scan interval (`Off / 5s / 10s / 30s / 60s`), live online status, Auto-Connect & in-app update check right on the Home Screen |
+| **Switching Between Macs** | Manual disconnect + re-pair | Manual | **Two-Way Instant Takeover (`⌘⇧T`):** Pull the tablet via HMAC-SHA256 UDP handover (`54322`) or tap **Switch Mac** directly in the Android Mini-Status-Pill |
 | **Virtual Display Lifecycle & Reliability** | Created on server start | Per-tablet display lifecycle | **Strictly On-Demand + Watchdogs (`⌘⇧D`):** Display exists only while streaming; 6s Mac watchdog, Android task-kill teardown, 5s Android heartbeat timeout, and dynamic wake lock |
 | **Resolution, HiDPI & Rotation** | Rebuilds server on display changes | Per-tablet resolution, orientation & position | **Live In-Place Rebuild + Orientation Lock:** Resolution, HiDPI, refresh rate, and Portrait/Landscape rotation rebuild live without disconnecting; tablet sensor rotation locked (incl. Android 16 opt-out) |
 | **Wireless Security** | Plaintext token handshake (`SSWA`) | Upstream wireless auth | **End-to-End Encrypted Wireless (`SSWE`):** Mutual HMAC-SHA256 challenge-response + **AES-256-GCM** stream encryption (default on) + live lock badge (`🔒`) |
-| **Keyboard & Mac Shortcuts** | Touch & mouse input | Touch & mouse input | **Hardware & Soft Keyboard + Special Keys (`⌘`):** Full keyboard forwarding (Touch ID / password guard on Mac), vertical sticky-modifier & shortcut panel (`⌘`/`⌥`/`⌃`/`⇧`, `Esc`/`Tab`/`Del`/arrows, `⌘ Space`/`⌘ Tab`/`⌘⌥ Esc`), plus 1-tap **Apps**, **Mission Control** & **Desktop** actions |
-| **Android Overlay & Zoom/Pan** | Corner stats + settings button | Upstream Android app | **Draggable Mini-Status-Pill + Popovers + Zoom/Pan:** Ultra-slim single-row pill (`Mac ▾`, `Keyboard`, `⌘`, `100% ▾`, `⋯`, `Disconnect`), `Zoom - / 1:1 / Zoom + / Fit` + pinch-to-zoom, selectable **Top Notch** or **SideKick Floating Button** trigger with saved positions |
-| **macOS Menu Bar & Automation** | Classic `NSMenu` + settings window | Pro Overview & License UI | **Native `NSPopover` + 4-Tab Settings + Automation:** Left-click (`⌘⇧W`) quick-control popover (incl. live `Rotation` picker), URL scheme (`sidekick://`), CLI flags, Vorssaint Quick Links, persistent local signing & one-click TCC reset |
+| **Touch, Dragging & Apple Gestures** | Touch & mouse input | Touch & mouse input | **Direct Window Dragging & macOS Trackpad Gestures:** 1-finger drag moves windows/selects text, 2-finger tap (right-click) & scroll, 2-finger pinch-to-zoom, 3-finger swipes (Mission Control, App Exposé, Switch Spaces), 4-finger (Show Desktop, Apps) — each toggleable under *Settings → Gestures* |
+| **Keyboard & Mac Shortcuts** | Touch & mouse input | Touch & mouse input | **Hardware & Soft Keyboard + Special Keys (`⌘`):** Full keyboard forwarding (Touch ID / password guard on Mac), auto-hiding soft keyboard button when a physical keyboard is attached, vertical sticky-modifier & shortcut panel (`⌘`/`⌥`/`⌃`/`⇧`, `Esc`/`Tab`/`Del`/arrows, `⌘ Space`/`⌘ Tab`/`⌘⌥ Esc`) |
+| **Android Overlay & Zoom/Pan** | Corner stats + settings button | Upstream Android app | **Squircle Mini-Status-Pill + Popovers + Quick Help (`?`):** Draggable single-row frosted-glass pill (`Apple` actions, `Keyboard`, `⌘`, `100% ▾`, `Switch Mac`, `Settings`, `Disconnect`), two-way **Top Notch** or **SideKick Button** trigger, collapsible **Overlay** & **Gestures** settings submenus |
+| **macOS Menu Bar & Automation** | Classic `NSMenu` + settings window | Pro Overview & License UI | **Distinct Menu Bar Icon + Sidebar Settings + GitHub Updater:** Custom `laptopcomputer.and.ipad` icon (optional colored teal-green tint), native `NSPopover` (`⌘⇧W`, live `Rotate` picker), 6-section Sidebar Settings, built-in GitHub Releases updater (Homebrew-aware), URL scheme (`sidekick://`), CLI flags & Vorssaint Quick Links |
 
 ---
 
 ## SideKick Highlights (Added in This Fork)
 
-- **Multi-Mac Wireless Pairing & Bonjour Discovery (`_sidescreen._tcp`):** Pair once per MacBook via QR code (or one-time pairing code). The Android app stores every paired MacBook persistently, discovers which Macs are currently online via mDNS/Bonjour, automatically tracks changing DHCP IP addresses, and lets you toggle **Auto-Connect** on or off.
+- **Multi-Mac Wireless Pairing, Periodic Auto-Scan & Home Screen Controls (`_sidescreen._tcp`):** Pair once per MacBook via QR code (or one-time pairing code). The Android Home Screen displays every paired MacBook with live Bonjour/mDNS online status, configurable **Auto-Scan Interval** (`Off` / `5s` / `10s` / `30s` / `60s`), **Auto-Connect**, **Updates**, and a **Quick Help (`?`)** reference popup.
 - **Two-Way Instant Takeover (`⌘⇧T`):** Switch the active tablet stream between MacBooks at any time:
-  - **From Mac:** Click **Take Over Tablet** in the menu bar / Settings footer or press `⌘⇧T` (sends an HMAC-SHA256 authenticated UDP broadcast on port `54322`).
-  - **From Android:** Open the `⋯` menu in the Mini-Status-Pill and tap **Switch Mac** to jump straight to another paired MacBook.
+  - **From Mac:** Click **Takeover** in the menu bar popover / Settings sidebar footer or press `⌘⇧T` (sends an HMAC-SHA256 authenticated UDP broadcast on port `54322`).
+  - **From Android:** Tap **Switch Mac** directly in the Mini-Status-Pill to jump straight to another paired MacBook.
 - **End-to-End Wireless Encryption (`SSWE` / AES-256-GCM):** Wireless connections use a mutual HMAC-SHA256 challenge-response handshake (so the 256-bit pairing token is never sent in plaintext over the air) and encrypt all video frames, display configs, touch input, and keyboard events using hardware-accelerated **AES-256-GCM** with per-session ephemeral keys.
-- **Draggable Mini-Status-Pill, Popovers & Selectable Trigger:** An ultra-slim, single-row frosted-glass pill (`MacBook Pro · 60 FPS · 🔒`) with dynamically anchored popovers for **Mac Actions** (`Apps`, `Mission Control`, `Desktop`), **Zoom** (`-`, `1:1`, `+`, `Fit` + pinch-to-zoom & pan), **Special Keys** (`⌘`), and **More** (`Switch Mac`, `Settings`, `Hide Overlay`). Choose between a **Top Notch** or a draggable **SideKick Button** trigger in Settings — SideKick remembers the last position of both elements across sessions.
-- **Tablet-to-Mac Keyboard Forwarding & Special Keys Strip:** Use a Bluetooth/USB/cover keyboard or tap the **Keyboard** icon on Android to type directly into macOS (including `⌘`, `⌥`, `⌃`, `⇧` shortcuts, navigation, `F1–F12`, and international characters). The `⌘` button opens a vertical Special Keys panel with one-shot sticky modifiers, `Esc`/`Tab`/`Del`/arrow keys, and 1-tap Mac shortcuts (`⌘ Space`, `⌘ Tab`, `⌘⌥ Esc`). Re-enabling **Keyboard Control** on the Mac requires **Touch ID / macOS user password**.
-- **Native macOS Menu Bar Popover (`NSPopover`):** Left-click the SideKick menu bar icon (or press `⌘⇧W`) for live FPS, bitrate, resolution, Start/Stop, Takeover (`⌘⇧T`), Disconnect (`⌘⇧D`), USB/Wi-Fi switch, live `Rotation` (`0° / 90° / 180° / 270°`), and Touch / Keyboard / Encryption toggles. Right-click opens the classic dropdown menu.
+- **Direct Window Dragging & Apple-Style Multi-Touch Gestures:** Drag macOS windows, sliders, and text selections directly with **1 finger**; use **2-finger tap** for right-click, **2-finger drag** for momentum scrolling, **2-finger pinch** to zoom the tablet viewport, **3-finger swipes** for **Mission Control** (up), **App Exposé** (down), and **Switch Spaces** (left/right), and **4-finger gestures** for **Show Desktop** (swipe up) and **Open Mac Apps** (tap/swipe down). Every gesture can be enabled or disabled individually under *Settings → Gestures*.
+- **Redesigned Android Squircle Mini-Status-Pill & Collapsible Settings:** A compact, single-row, **draggable** frosted-glass pill accented in SideKick teal-green (`#0FA982` / `#00C896`) with dynamically anchored popovers for the **Apple** button (`Apps`, `Mission Control`, `Desktop`), **Zoom** (`-`, `1:1`, `+`, `Fit`), and **Special Keys** (`⌘`), plus direct **Switch Mac**, **Settings**, and **Disconnect** buttons. Choose between a two-way **Top Notch** (toggles overlay both on and off) or a draggable **SideKick Button** trigger, and organize options cleanly inside collapsible **Overlay Settings** and **Gestures** submenus.
+- **Tablet-to-Mac Keyboard Forwarding & Auto-Hiding Soft Keyboard Button:** Use a Bluetooth/USB/cover keyboard or tap the **Keyboard** icon on Android to type directly into macOS (including `⌘`, `⌥`, `⌃`, `⇧` shortcuts, navigation, `F1–F12`, and international characters). The on-screen Keyboard button automatically hides whenever a physical keyboard is connected and reappears when disconnected. Re-enabling **Keyboard Control** on the Mac requires **Touch ID / macOS user password**.
+- **Distinct macOS Menu Bar Icon, Native `NSPopover` & Sidebar Settings:** Easily distinguishable `laptopcomputer.and.ipad` menu bar icon (with optional colored teal-green status tint in *System → Menu Bar*). Left-click (or press `⌘⇧W`) for live FPS, bitrate, resolution, Start/Stop, Takeover (`⌘⇧T`), Disconnect (`⌘⇧D`), USB/Wi-Fi switch, live `Rotate` (`0° / 90° / 180° / 270°`), and Touch / Keyboard / Encryption toggles. Right-click opens the classic dropdown menu.
+- **Built-In GitHub Releases Updater (macOS & Android):** Lightweight zero-infrastructure update checker against GitHub Releases (`kleinski/SideKick/releases/latest`). On macOS (*About & Updates*), it automatically detects Homebrew Cask installs (`Copy brew upgrade`) or offers a direct DMG download; on Android, tap **Updates** on the Home Screen for direct APK downloads.
 - **On-Demand Virtual Display, Watchdogs & Dynamic Wake Lock (`⌘⇧D`):** The macOS virtual display is created only when a tablet connects and torn down immediately on disconnect, Android app swipe-away (`DisconnectOnTaskRemovedService`), or after a 6-second Mac liveness timeout. On Android, a 5-second stream heartbeat timeout cleanly returns to the Home Screen if the MacBook powers off or sleeps, and `FLAG_KEEP_SCREEN_ON` is active only while streaming.
 - **Live Resolution, HiDPI, Refresh Rate & Rotation Switching:** Change resolution, Retina/HiDPI mode, frame rate, or Portrait/Landscape rotation on the fly — the Mac rebuilds the virtual display in-place without dropping your session. Android tablet sensor rotation is locked (including the Android 16 large-screen opt-out) so only the Mac app controls orientation.
 - **URL Scheme, CLI & Vorssaint Command Bar Integration:**
   - **URL Scheme:** `sidekick://takeover`, `sidekick://disconnect`, `sidekick://toggle`, `sidekick://start`, `sidekick://stop`, `sidekick://settings`
   - **CLI Flags:** `/Applications/SideKick.app/Contents/MacOS/SideKick --takeover` (or `--disconnect`, `--toggle`, `--start`, `--stop`, `--settings`)
-  - **Vorssaint Integration:** Automatically registers Quick Links when `/Applications/Vorssaint.app` is present (or re-register any time under *Settings → System & Status → Maintenance & Integrations*).
+  - **Vorssaint Integration:** Automatically registers Quick Links when `/Applications/Vorssaint.app` is present (or re-register any time under *Settings → System → Maintenance & Integrations*).
 
 ---
 
@@ -135,7 +138,7 @@ Enable HiDPI mode to render at 2× resolution internally — text and icons are 
 Enable Gaming Boost for optimized settings: 1 Gbps bitrate, ultra-low latency encoding, 120 FPS.
 
 ### Headless / Portable Mac
-Run a Mac with no display of its own — a Mac Studio or Mini on the go, or a laptop in clamshell — using the tablet as its only screen. Enable **Launch at Login** and **Auto-start streaming on launch** under *Settings → Connection*, and the Mac boots straight into standby for your tablet.
+Run a Mac with no display of its own — a Mac Studio or Mini on the go, or a laptop in clamshell — using the tablet as its only screen. Enable **Launch at Login** and **Auto-start streaming on launch** under *Settings → System*, and the Mac boots straight into standby for your tablet.
 
 <p align="right"><a href="#readme-top">↑ Back to top</a></p>
 
@@ -183,7 +186,7 @@ Download the latest **SideKick** builds from [**GitHub Releases (`kleinski/SideK
 - **Android (`SideKick-<version>-android-release.apk`):**
   - Download and install the `.apk` directly on your Android tablet, or install via ADB:
     ```bash
-    adb install -r SideKick-1.2.24-android-release.apk
+    adb install -r SideKick-1.2.25-android-release.apk
     ```
   - Because SideKick uses the package ID `com.sidekick.app`, it can be installed alongside the original Google Play `SideScreen` app without conflict.
 
@@ -228,28 +231,37 @@ cd SideKick
 3. **Automatic Connection & Switching:**
    - When only **one** paired MacBook is running SideKick on your WiFi, opening the Android app connects to it automatically.
    - When **multiple** paired MacBooks are online, the Android app highlights the online Macs (`● Online`) so you can pick which Mac to connect to.
-   - **Switch Macs at any time:** Press `⌘⇧T` (or click **Takeover** in the Menu Bar Popover) on the MacBook you want to switch to, or tap `⋯` → **Switch Mac** in the Android Mini-Status-Pill.
+   - **Switch Macs at any time:** Press `⌘⇧T` (or click **Takeover** in the Menu Bar Popover) on the MacBook you want to switch to, or tap **Switch Mac** directly in the Android Mini-Status-Pill.
    - **Disconnect without stopping the server:** Press `⌘⇧D` (or click **Disconnect Tablet** in the Menu Bar Popover) to close the tablet session and remove the virtual display while keeping the Mac ready for the next connection.
-   - **Type, trigger Mac actions, or zoom from your tablet:** Use the draggable Mini-Status-Pill on Android for **Mac ▾** (`Apps`, `Mission Control`, `Desktop`), **Keyboard**, **⌘** (Special Keys), and **100% ▾** (`Zoom - / 1:1 / Zoom + / Fit`). Toggle **Keyboard Control** in the Mac Menu Bar Popover (or *Settings → Display & Touch*) to allow or block keyboard input.
+   - **Gestures, keyboard & overlay controls:** Drag macOS windows directly with 1 finger, right-click/scroll with 2 fingers, and use 3- or 4-finger Apple gestures (Mission Control, App Exposé, Switch Spaces, Show Desktop, Apps). Use the draggable Mini-Status-Pill for the **Apple** button (`Apps`, `Mission Control`, `Desktop`), **Keyboard** (auto-hidden when a hardware keyboard is connected), **⌘** (Special Keys), **100% ▾** (`Zoom - / 1:1 / Zoom + / Fit`), and **Settings** (collapsible **Overlay Settings** & **Gestures** submenus). Toggle **Keyboard Control** in the Mac Menu Bar Popover (or *Settings → Overview / Display & Touch*) to allow or block keyboard input.
 
 ### USB Mode (Lowest Latency)
 
 1. Connect the tablet to your Mac via **USB-C**.
-2. In **SideKick** on Mac → **Connection** tab → select **USB (Cable)** and click **Start**.
+2. In **SideKick** on Mac → **Connection** → select **USB (Cable)** and click **Start**.
 3. Open **SideKick** on the tablet → **USB** tab → tap **Connect**.
 
 ---
 
 ## Configuration
 
-Settings in the macOS app are organized into four tabs:
+### macOS Sidebar Settings
 
-| Tab | Settings & Actions |
+Settings in the macOS app are organized into six sidebar sections (with persistent footer controls for `Takeover ⌘⇧T`, `Start/Stop`, `Restart`, and `Quit`):
+
+| Section | Settings & Actions |
 |---|---|
-| **Connection** | Mode (`USB` / `Wireless`), QR Code & Paired Token management, `Launch at Login`, `Auto-start streaming on launch`, `Startup mode` |
-| **Display & Touch** | Resolution presets (`720p` to `8K` + custom), `HiDPI (Retina)` mode, `Enable Touch Input`, `Enable Keyboard Input`, `Accessibility Permission` status + `Reset & Prompt` (all display changes apply live without disconnecting the tablet) |
+| **Overview** | Live connection, permission & Separate Spaces status, ADB/LAN address, Quick Controls (`Touch`, `Keyboard` with Touch ID, `Rotate`, `Disconnect Tablet`) |
+| **Connection** | Mode (`USB` / `Wireless`), QR Code & Paired Token management, `Wireless Encryption (AES-256-GCM)`, `Startup mode` |
+| **Display & Touch** | Resolution presets (`720p` to `8K` + custom), `HiDPI (Retina)` mode, `Enable Touch Input`, `Enable Keyboard Input`, `Accessibility Permission` status (all display changes apply live without disconnecting) |
 | **Stream & Quality** | `Refresh Rate` (30–120 Hz), `Target Bitrate` (20–5000 Mbps), `Encoding Latency`, `Gaming Boost` (1 Gbps, 120 Hz) |
-| **System & Status** | Live connection & permission status, `Reset macOS Permissions (TCC)`, `Register Actions in Vorssaint` |
+| **System** | `Launch at Login`, `Auto-start streaming on launch`, `Colored Menu Bar Icon` toggle, `Reset macOS Permissions (TCC)`, `Register Actions in Vorssaint`, `Reset Settings to Defaults` |
+| **About & Updates** | Built-in GitHub Releases updater (auto-detects Homebrew Cask installs or downloads DMG directly) and optional daily update check |
+
+### Android Settings
+
+- **Home Screen:** Paired MacBooks list with live Bonjour status, **Auto-Scan Interval** (`Off` / `5s` / `10s` / `30s` / `60s`), **Auto-Connect** toggle, **Updates** check, and **Quick Help (`?`)**.
+- **In-Stream Settings (Gear icon):** Collapsible **Overlay Settings** (*Show Live Stats*, *Auto-Hide Top Overlay*, *Overlay Trigger*: `Top Notch` vs. `SideKick Button`, *Reset Positions*, *Overlay Opacity*) and collapsible **Gestures** (*Pinch to Zoom & Pan*, *Mission Control*, *App Exposé*, *Switch Spaces*, *Show Desktop*, *Open Mac Apps*).
 
 ---
 
@@ -258,7 +270,7 @@ Settings in the macOS app are organized into four tabs:
 <details>
 <summary><strong>macOS permissions (Screen Recording / Accessibility) stop working after an update</strong></summary>
 
-Open **SideKick Settings → System & Status → Maintenance & Integrations** and click **Reset Permissions**, then re-enable **SideKick** in **System Settings → Privacy & Security → Screen Recording** and **Accessibility**. To prevent macOS from invalidating permissions on future local builds, run `./scripts/setup_signing_cert.sh` once and mark `"SideKick Local Signing"` as *Always Trust* in Keychain Access.
+Open **SideKick Settings → System → Maintenance & Integrations** and click **Reset Permissions**, then re-enable **SideKick** in **System Settings → Privacy & Security → Screen Recording** and **Accessibility**. To prevent macOS from invalidating permissions on future local builds, run `./scripts/setup_signing_cert.sh` once and mark `"SideKick Local Signing"` as *Always Trust* in Keychain Access.
 </details>
 
 <details>

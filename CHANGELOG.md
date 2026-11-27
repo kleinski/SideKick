@@ -17,6 +17,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+<a id="1.2.25"></a>
+## [1.2.25] - 2026-11-27 — Collapsible Android Settings Submenus & Updated README
+
+### Changed
+- **Collapsible Android Settings Submenus (`dialog_settings.xml`, `MainActivity.kt`):**
+  - Grouped **Overlay Settings** and **Gestures** into two collapsible accordion submenus inside the Android settings modal, each displaying a live status summary (`Top Notch · 80% opacity`, `6 of 6 enabled`) and animated chevron when collapsed.
+- **Updated `README.md`:**
+  - Documented the redesigned macOS Sidebar Settings, distinct optional colored menu bar icon, built-in GitHub Releases updater, Android squircle Mini-Status-Pill, periodic Home Screen Auto-Scan, direct window dragging, Apple multi-touch gestures, and collapsible Android settings submenus.
+
+---
+
 <a id="1.2.24"></a>
 ## [1.2.24] - 2026-11-27 — Android Gestures Settings Section
 

@@ -896,6 +896,11 @@ class MainActivity : AppCompatActivity() {
 
         hideSettingsSwitch.setOnCheckedChangeListener { _, isChecked ->
             prefs.hideSettingsButton = isChecked
+            val triggerName =
+                if (prefs.overlayTriggerMode == PreferencesManager.TRIGGER_BUTTON) "SideKick Button" else "Top Notch"
+            val pct = (prefs.overlayOpacity * 100).toInt()
+            val autoHideTag = if (isChecked) " · Auto-hide" else ""
+            view.findViewById<TextView>(R.id.overlaySectionSummary)?.text = "$triggerName · $pct% opacity$autoHideTag"
             if (isStreamingUi) {
                 applySettingsButtonVisibility()
             }
@@ -910,14 +915,66 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        val overlaySectionHeader = view.findViewById<View>(R.id.overlaySectionHeader)
+        val overlaySectionContent = view.findViewById<View>(R.id.overlaySectionContent)
+        val overlaySectionChevron = view.findViewById<TextView>(R.id.overlaySectionChevron)
+        val overlaySectionSummary = view.findViewById<TextView>(R.id.overlaySectionSummary)
+        val gesturesSectionHeader = view.findViewById<View>(R.id.gesturesSectionHeader)
+        val gesturesSectionContent = view.findViewById<View>(R.id.gesturesSectionContent)
+        val gesturesSectionChevron = view.findViewById<TextView>(R.id.gesturesSectionChevron)
+        val gesturesSectionSummary = view.findViewById<TextView>(R.id.gesturesSectionSummary)
+
+        fun updateOverlaySummary() {
+            val triggerName =
+                if (prefs.overlayTriggerMode == PreferencesManager.TRIGGER_BUTTON) "SideKick Button" else "Top Notch"
+            val pct = (prefs.overlayOpacity * 100).toInt()
+            val autoHideTag = if (prefs.hideSettingsButton) " · Auto-hide" else ""
+            overlaySectionSummary?.text = "$triggerName · $pct% opacity$autoHideTag"
+        }
+
+        fun updateGesturesSummary() {
+            val enabledCount =
+                listOf(
+                    prefs.gesturePinchZoomEnabled,
+                    prefs.gestureMissionControlEnabled,
+                    prefs.gestureAppExposeEnabled,
+                    prefs.gestureSwitchSpacesEnabled,
+                    prefs.gestureShowDesktopEnabled,
+                    prefs.gestureAppsEnabled,
+                ).count { it }
+            gesturesSectionSummary?.text = "$enabledCount of 6 enabled"
+        }
+
+        fun setSectionExpanded(content: View?, chevron: View?, expanded: Boolean) {
+            content?.visibility = if (expanded) View.VISIBLE else View.GONE
+            chevron?.animate()?.rotation(if (expanded) 90f else 0f)?.setDuration(150)?.start()
+        }
+
+        overlaySectionHeader?.setOnClickListener {
+            val willExpand = overlaySectionContent?.visibility != View.VISIBLE
+            setSectionExpanded(overlaySectionContent, overlaySectionChevron, willExpand)
+            if (willExpand) {
+                setSectionExpanded(gesturesSectionContent, gesturesSectionChevron, false)
+            }
+        }
+        gesturesSectionHeader?.setOnClickListener {
+            val willExpand = gesturesSectionContent?.visibility != View.VISIBLE
+            setSectionExpanded(gesturesSectionContent, gesturesSectionChevron, willExpand)
+            if (willExpand) {
+                setSectionExpanded(overlaySectionContent, overlaySectionChevron, false)
+            }
+        }
+
         fun updateTriggerToggleUi() {
             val isButton = prefs.overlayTriggerMode == PreferencesManager.TRIGGER_BUTTON
             triggerNotchOption?.setBackgroundColor(if (!isButton) Color.parseColor("#0FA982") else Color.TRANSPARENT)
             triggerNotchOption?.setTextColor(if (!isButton) Color.WHITE else Color.parseColor("#94A3B8"))
             triggerButtonOption?.setBackgroundColor(if (isButton) Color.parseColor("#0FA982") else Color.TRANSPARENT)
             triggerButtonOption?.setTextColor(if (isButton) Color.WHITE else Color.parseColor("#94A3B8"))
+            updateOverlaySummary()
         }
         updateTriggerToggleUi()
+        updateGesturesSummary()
 
         triggerNotchOption?.setOnClickListener {
             prefs.overlayTriggerMode = PreferencesManager.TRIGGER_NOTCH
@@ -941,27 +998,45 @@ class MainActivity : AppCompatActivity() {
         // Gestures section switches
         view.findViewById<SwitchMaterial>(R.id.gesturePinchZoomSwitch)?.apply {
             isChecked = prefs.gesturePinchZoomEnabled
-            setOnCheckedChangeListener { _, checked -> prefs.gesturePinchZoomEnabled = checked }
+            setOnCheckedChangeListener { _, checked ->
+                prefs.gesturePinchZoomEnabled = checked
+                updateGesturesSummary()
+            }
         }
         view.findViewById<SwitchMaterial>(R.id.gestureMissionControlSwitch)?.apply {
             isChecked = prefs.gestureMissionControlEnabled
-            setOnCheckedChangeListener { _, checked -> prefs.gestureMissionControlEnabled = checked }
+            setOnCheckedChangeListener { _, checked ->
+                prefs.gestureMissionControlEnabled = checked
+                updateGesturesSummary()
+            }
         }
         view.findViewById<SwitchMaterial>(R.id.gestureAppExposeSwitch)?.apply {
             isChecked = prefs.gestureAppExposeEnabled
-            setOnCheckedChangeListener { _, checked -> prefs.gestureAppExposeEnabled = checked }
+            setOnCheckedChangeListener { _, checked ->
+                prefs.gestureAppExposeEnabled = checked
+                updateGesturesSummary()
+            }
         }
         view.findViewById<SwitchMaterial>(R.id.gestureSwitchSpacesSwitch)?.apply {
             isChecked = prefs.gestureSwitchSpacesEnabled
-            setOnCheckedChangeListener { _, checked -> prefs.gestureSwitchSpacesEnabled = checked }
+            setOnCheckedChangeListener { _, checked ->
+                prefs.gestureSwitchSpacesEnabled = checked
+                updateGesturesSummary()
+            }
         }
         view.findViewById<SwitchMaterial>(R.id.gestureShowDesktopSwitch)?.apply {
             isChecked = prefs.gestureShowDesktopEnabled
-            setOnCheckedChangeListener { _, checked -> prefs.gestureShowDesktopEnabled = checked }
+            setOnCheckedChangeListener { _, checked ->
+                prefs.gestureShowDesktopEnabled = checked
+                updateGesturesSummary()
+            }
         }
         view.findViewById<SwitchMaterial>(R.id.gestureAppsSwitch)?.apply {
             isChecked = prefs.gestureAppsEnabled
-            setOnCheckedChangeListener { _, checked -> prefs.gestureAppsEnabled = checked }
+            setOnCheckedChangeListener { _, checked ->
+                prefs.gestureAppsEnabled = checked
+                updateGesturesSummary()
+            }
         }
 
         opacitySlider.addOnChangeListener { _, value, _ ->
@@ -969,6 +1044,7 @@ class MainActivity : AppCompatActivity() {
             updateOverlayOpacity(value)
             updateSettingsButtonOpacity(value)
             opacityValue.text = "${(value * 100).toInt()}%"
+            updateOverlaySummary()
         }
 
         disconnectButton.setOnClickListener {
