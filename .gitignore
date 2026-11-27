@@ -66,3 +66,4 @@ AndroidClient/ktlint
 # Local toolchain (portable JDK & Android SDK)
 .toolchain/
 *.pyc
+scripts/check_upstream_forks.py
