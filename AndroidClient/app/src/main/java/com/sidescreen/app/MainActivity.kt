@@ -183,7 +183,7 @@ class MainActivity : AppCompatActivity() {
             if (prefs.autoConnectEnabled != isChecked) {
                 prefs.autoConnectEnabled = isChecked
                 if (isChecked && prefs.connectionMode == ConnectionMode.WIRELESS && !isStreamingUi) {
-                    wirelessController.scanAndRefreshMacList(allowAutoConnect = true)
+                    wirelessController.clearSuppressionAndScan()
                 }
             }
         }
@@ -1967,7 +1967,9 @@ class MainActivity : AppCompatActivity() {
                     if (mode == ConnectionMode.WIRELESS) {
                         // Don't restart checklist (it conflicts with wireless on Mac).
                         // Tell wireless controller to show the idle/reconnect UI.
-                        wirelessController.onStreamDisconnected()
+                        val wasUserDisconnect = userInitiatedDisconnect
+                        userInitiatedDisconnect = false
+                        wirelessController.onStreamDisconnected(userInitiated = wasUserDisconnect)
                     } else {
                         log("📋 Restarting checklist updates")
                         startChecklistUpdates()
@@ -2329,7 +2331,10 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private var userInitiatedDisconnect = false
+
     private fun disconnect() {
+        userInitiatedDisconnect = true
         stopPingTimer()
         try {
             stopService(Intent(this, DisconnectOnTaskRemovedService::class.java))

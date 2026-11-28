@@ -17,6 +17,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+<a id="1.2.26"></a>
+## [1.2.26] - 2026-11-28 — Smart Wireless Auto-Reconnect
+
+### Fixed
+- **Reliable Wireless Auto-Reconnect (`AutoReconnectPolicy.kt`, `WirelessTabController.kt`, `MainActivity.kt`):**
+  - Separated intentional disconnects (tablet *Disconnect* button and Mac-side `⌘⇧D`) from unplanned drops (Mac sleep, Wi-Fi drop, heartbeat timeout, Mac restart).
+  - After an unplanned drop, SideKick now remembers the previously active Mac and automatically reconnects via Bonjour or the periodic Auto-Scan as soon as that Mac comes back online — even when a second paired Mac is also online.
+  - Returning to SideKick from background/standby (`onResume`) or seeing a manually disconnected Mac go offline→online automatically lifts auto-connect suppression and scans immediately.
+  - Transient `NetworkUnreachable` errors now return to `PAIRED_IDLE` instead of dead-ending in `REPAIR_NEEDED`, keeping the periodic auto-scan active.
+
+---
+
 <a id="1.2.25"></a>
 ## [1.2.25] - 2026-11-27 — Collapsible Android Settings Submenus & Updated README
 

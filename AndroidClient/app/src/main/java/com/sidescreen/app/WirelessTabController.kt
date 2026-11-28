@@ -92,12 +92,16 @@ class WirelessTabController(
     private var scanJob: Job? = null
     private var periodicScanJob: Job? = null
     private var isActivityResumed = true
+    private var wasPaused = false
 
     /**
-     * Set to true after an explicit Disconnect or error so we stay on the Mac selection list
-     * instead of immediately auto-reconnecting in a loop.
+     * Set to true after an explicit Disconnect (tablet button or Mac-side ⌘⇧D) or auth error
+     * so we stay on the Mac selection list instead of immediately auto-reconnecting in a loop.
+     * Lifted automatically when the suppressed Mac goes offline→online or on app resume.
      */
     private var suppressAutoConnect = false
+    private var suppressedHostId: String? = null
+    private var preferredReconnectHostId: String? = null
     private var autoConnectRetryPending = false
 
     fun bind() {
@@ -164,11 +168,17 @@ class WirelessTabController(
                             .toSet()
                     if (changed || !mdnsOnline.all { it in onlineHostIds }) {
                         onlineHostIds = onlineHostIds + mdnsOnline
-                        val onlineMacs = all.filter { it.hostId in onlineHostIds }
-                        if (!suppressAutoConnect && prefs.autoConnectEnabled && onlineMacs.size == 1) {
-                            val soleMac = onlineMacs.first()
-                            views.scanStatusText?.text = "${soleMac.macName} is online — connecting automatically…"
-                            connectToEntry(soleMac)
+                        val targetId =
+                            AutoReconnectPolicy.chooseTargetHostId(
+                                autoConnectEnabled = prefs.autoConnectEnabled,
+                                suppressed = suppressAutoConnect,
+                                onlineHostIds = onlineHostIds,
+                                preferredReconnectHostId = preferredReconnectHostId,
+                            )
+                        val targetMac = targetId?.let { id -> all.firstOrNull { it.hostId == id } }
+                        if (targetMac != null) {
+                            views.scanStatusText?.text = "${targetMac.macName} is online — connecting automatically…"
+                            connectToEntry(targetMac)
                         } else {
                             renderPairedMacsList(all)
                         }
@@ -179,13 +189,21 @@ class WirelessTabController(
     }
 
     /**
-     * Called when the TCP stream goes down (user tapped Disconnect, network drop, etc).
-     * Move the UI to the multi-Mac list without auto-connecting immediately.
+     * Called when the TCP stream goes down.
+     * - [userInitiated] == true (tablet Disconnect button): suppress auto-connect until the Mac
+     *   goes offline→online or the app returns to foreground (onResume).
+     * - [userInitiated] == false (network drop, Mac sleep, heartbeat timeout, or Mac ⌘⇧D):
+     *   probe immediately. If the same Mac is still immediately reachable, treat it as a
+     *   Mac-initiated Disconnect (⌘⇧D) and stay idle. Otherwise arm auto-reconnect for that Mac.
      */
-    fun onStreamDisconnected() {
-        suppressAutoConnect = true
+    fun onStreamDisconnected(userInitiated: Boolean = false) {
+        val lastHostId = activeEntry?.hostId ?: storage.load()?.hostId
+        autoConnectRetryPending = false
         val all = storage.loadAll()
         if (all.isEmpty()) {
+            suppressAutoConnect = false
+            suppressedHostId = null
+            preferredReconnectHostId = null
             transition(State.FIRST_TIME)
             return
         }
@@ -194,7 +212,20 @@ class WirelessTabController(
         views.idleMacIp.text = "${primary.host}:${primary.port}"
         transition(State.PAIRED_IDLE)
         renderPairedMacsList(all)
-        scanAndRefreshMacList(allowAutoConnect = false)
+
+        if (userInitiated) {
+            suppressAutoConnect = true
+            suppressedHostId = lastHostId
+            preferredReconnectHostId = null
+            scanAndRefreshMacList(allowAutoConnect = false)
+        } else {
+            // Probe immediately to distinguish Mac-side Disconnect (Mac still listening)
+            // from an unplanned drop (Mac asleep / WiFi drop / Mac restarting).
+            scanAndRefreshMacList(
+                allowAutoConnect = false,
+                postDropHostId = lastHostId,
+            )
+        }
     }
 
     private fun transition(next: State) {
@@ -211,17 +242,36 @@ class WirelessTabController(
 
     fun onResume() {
         isActivityResumed = true
+        if (wasPaused) {
+            wasPaused = false
+            if (state == State.PAIRED_IDLE) {
+                suppressAutoConnect = false
+                suppressedHostId = null
+                autoConnectRetryPending = false
+                scanAndRefreshMacList(allowAutoConnect = prefs.autoConnectEnabled, silent = false)
+            }
+        }
         updatePeriodicScanLoop()
     }
 
     fun onPause() {
         isActivityResumed = false
+        wasPaused = true
         periodicScanJob?.cancel()
         periodicScanJob = null
     }
 
     fun onScanIntervalChanged() {
         updatePeriodicScanLoop()
+    }
+
+    fun clearSuppressionAndScan() {
+        suppressAutoConnect = false
+        suppressedHostId = null
+        autoConnectRetryPending = false
+        if (state == State.PAIRED_IDLE) {
+            scanAndRefreshMacList(allowAutoConnect = prefs.autoConnectEnabled)
+        }
     }
 
     private fun updatePeriodicScanLoop() {
@@ -237,7 +287,7 @@ class WirelessTabController(
                     delay(prefs.scanIntervalSeconds * 1_000L)
                     if (!isActivityResumed || state != State.PAIRED_IDLE) break
                     scanAndRefreshMacList(
-                        allowAutoConnect = !suppressAutoConnect && prefs.autoConnectEnabled,
+                        allowAutoConnect = prefs.autoConnectEnabled,
                         silent = true,
                     )
                 }
@@ -269,6 +319,7 @@ class WirelessTabController(
     fun scanAndRefreshMacList(
         allowAutoConnect: Boolean,
         silent: Boolean = false,
+        postDropHostId: String? = null,
     ) {
         scanJob?.cancel()
         val entries = storage.loadAll()
@@ -288,11 +339,39 @@ class WirelessTabController(
                     val refreshedEntries = storage.loadAll()
                     val onlineMacs = refreshedEntries.filter { it.hostId in reachableIds }
 
+                    // Handle immediate post-drop classification (unplanned drop vs Mac-side ⌘⇧D)
+                    if (postDropHostId != null) {
+                        if (postDropHostId in reachableIds) {
+                            // Mac is still immediately listening -> Mac-initiated Disconnect (⌘⇧D).
+                            // Stay on the Mac list instead of reconnecting in a tight loop.
+                            suppressAutoConnect = true
+                            suppressedHostId = postDropHostId
+                            preferredReconnectHostId = null
+                        } else {
+                            // Mac went unreachable -> unplanned drop (sleep / WiFi / restart).
+                            // Arm auto-reconnect for this Mac as soon as it returns.
+                            suppressAutoConnect = false
+                            suppressedHostId = null
+                            preferredReconnectHostId = postDropHostId
+                        }
+                    } else if (AutoReconnectPolicy.shouldLiftSuppression(suppressAutoConnect, suppressedHostId, reachableIds)) {
+                        suppressAutoConnect = false
+                        suppressedHostId = null
+                    }
+
+                    val targetId =
+                        AutoReconnectPolicy.chooseTargetHostId(
+                            autoConnectEnabled = prefs.autoConnectEnabled,
+                            suppressed = suppressAutoConnect || !allowAutoConnect,
+                            onlineHostIds = reachableIds,
+                            preferredReconnectHostId = preferredReconnectHostId,
+                        )
+                    val targetMac = targetId?.let { id -> refreshedEntries.firstOrNull { it.hostId == id } }
+
                     when {
-                        onlineMacs.size == 1 && allowAutoConnect && prefs.autoConnectEnabled -> {
-                            val soleMac = onlineMacs.first()
-                            views.scanStatusText?.text = "${soleMac.macName} is online — connecting automatically…"
-                            connectToEntry(soleMac)
+                        targetMac != null -> {
+                            views.scanStatusText?.text = "${targetMac.macName} is online — connecting automatically…"
+                            connectToEntry(targetMac)
                         }
                         onlineMacs.size > 1 -> {
                             views.scanStatusText?.text =
@@ -305,15 +384,24 @@ class WirelessTabController(
                             renderPairedMacsList(refreshedEntries)
                         }
                         else -> {
+                            val waitingName =
+                                preferredReconnectHostId?.let { id ->
+                                    refreshedEntries.firstOrNull { it.hostId == id }?.macName
+                                }
                             views.scanStatusText?.text =
-                                "No paired MacBook reachable yet. Make sure SideKick is running on your Mac."
+                                if (waitingName != null && prefs.autoConnectEnabled) {
+                                    "Waiting for $waitingName to come back online…"
+                                } else {
+                                    "No paired MacBook reachable yet. Make sure SideKick is running on your Mac."
+                                }
                             renderPairedMacsList(refreshedEntries)
                             if (allowAutoConnect && prefs.autoConnectEnabled && !autoConnectRetryPending) {
                                 autoConnectRetryPending = true
                                 scope.launch {
                                     delay(1_500L)
+                                    autoConnectRetryPending = false
                                     if (state == State.PAIRED_IDLE && !suppressAutoConnect) {
-                                        scanAndRefreshMacList(allowAutoConnect = true)
+                                        scanAndRefreshMacList(allowAutoConnect = true, silent = true)
                                     }
                                 }
                             }
@@ -454,6 +542,7 @@ class WirelessTabController(
 
     fun connectToEntry(entry: PairedHostStorage.Entry) {
         suppressAutoConnect = false
+        suppressedHostId = null
         activeEntry = entry
         storage.markConnected(entry)
         val deviceName = defaultDeviceName(activity)
@@ -497,33 +586,36 @@ class WirelessTabController(
     }
 
     fun onConnectError(error: StreamClient.WirelessConnectError) {
-        suppressAutoConnect = true
         val cached = activeEntry ?: storage.load()
         when (error) {
             is StreamClient.WirelessConnectError.NetworkUnreachable -> {
                 val all = storage.loadAll()
-                if (all.size > 1) {
-                    // When multiple Macs are paired, return directly to the multi-Mac list
-                    // so the user can pick the other Mac with 1 tap instead of a dead-end error screen.
+                if (all.isNotEmpty()) {
+                    // Stay in PAIRED_IDLE instead of dead-ending in REPAIR_NEEDED so the
+                    // periodic auto-scan & Bonjour listener can reconnect when the Mac wakes up.
+                    suppressAutoConnect = false
+                    suppressedHostId = null
+                    preferredReconnectHostId = cached?.hostId
                     transition(State.PAIRED_IDLE)
                     views.scanStatusText?.text =
-                        "⚠ Could not reach ${cached?.macName ?: "Mac"} (${cached?.host}:${cached?.port}). Pick another Mac or scan QR:"
+                        if (prefs.autoConnectEnabled) {
+                            "⚠ Could not reach ${cached?.macName ?: "Mac"} — waiting to reconnect…"
+                        } else {
+                            "⚠ Could not reach ${cached?.macName ?: "Mac"} (${cached?.host}:${cached?.port}). Tap to retry:"
+                        }
                     renderPairedMacsList(all)
                     return
                 }
+                suppressAutoConnect = true
                 views.repairTitle.text = "⚠ Couldn't reach Mac"
                 views.repairMessage.text =
-                    if (cached != null) {
-                        "No response from ${cached.macName} at ${cached.host}:${cached.port}.\n\n" +
-                            "The Mac may have switched WiFi networks, changed its port, or is not " +
-                            "running. Open SideKick on the Mac and scan the new QR to re-pair."
-                    } else {
-                        "No response from your Mac. Make sure both devices are on the same WiFi " +
-                            "and the Mac app is running, then scan the QR again."
-                    }
+                    "No response from your Mac. Make sure both devices are on the same WiFi " +
+                        "and the Mac app is running, then scan the QR again."
                 transition(State.REPAIR_NEEDED)
             }
             is StreamClient.WirelessConnectError.TokenRejected -> {
+                suppressAutoConnect = true
+                preferredReconnectHostId = null
                 views.repairTitle.text = "⚠ Re-pair required"
                 views.repairMessage.text =
                     if (cached != null) {
@@ -535,6 +627,8 @@ class WirelessTabController(
                 transition(State.REPAIR_NEEDED)
             }
             is StreamClient.WirelessConnectError.ProtocolError -> {
+                suppressAutoConnect = true
+                preferredReconnectHostId = null
                 views.repairTitle.text = "⚠ Connection error"
                 views.repairMessage.text = "Couldn't complete the secure handshake with the Mac. Scan the QR again."
                 transition(State.REPAIR_NEEDED)
@@ -556,6 +650,10 @@ class WirelessTabController(
         ip: String,
         encrypted: Boolean = true,
     ) {
+        suppressAutoConnect = false
+        suppressedHostId = null
+        preferredReconnectHostId = null
+        autoConnectRetryPending = false
         views.connectedMacName.text = macName
         views.connectedMacIp.text = ip
         views.connectedEncryptionStatus?.apply {
